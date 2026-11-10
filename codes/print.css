@@ -1,0 +1,114 @@
+/* Malzeme listesi belgesi (A4 yatay). P&PX antetiyle aynı dil: üstte marka ve kırmızı çizgi,
+   altta firma adı ve sayfa numarası. Yazı tipi Segoe UI'dır; PDF'te ölçüleri aynı Selawik gömülür. */
+
+.print-sheet { display: block; break-after: page; overflow: hidden; }
+.print-sheet:last-child { break-after: auto; }
+
+.bp-page {
+  --accent: #ff0000;
+  position: relative;
+  width: 297mm;
+  height: 210mm;
+  background: #fff;
+  color: #15171c;
+  font-family: 'Segoe UI', sans-serif;
+  font-size: 8pt;
+  line-height: 1.3;
+  text-align: left;
+  white-space: normal;
+}
+.bp-page * { box-sizing: border-box; }
+
+.bp-header {
+  position: absolute;
+  left: 12mm;
+  right: 12mm;
+  top: 8mm;
+  height: 12mm;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 8mm;
+  padding-bottom: 1.4mm;
+  border-bottom: 0.6mm solid var(--accent);
+}
+.bp-brand { display: flex; align-items: baseline; gap: 2.4mm; min-width: 0; }
+.bp-brand-name { font-size: 15pt; font-weight: 700; color: var(--accent); letter-spacing: 0.4px; line-height: 1; }
+.bp-brand-sub { font-size: 7pt; color: #777; text-transform: uppercase; letter-spacing: 1.2px; }
+.bp-brand img { display: block; height: 7.5mm; max-width: 48mm; object-fit: contain; object-position: left bottom; }
+.bp-doc { text-align: right; min-width: 0; }
+.bp-doc-title { font-size: 10.5pt; font-weight: 700; color: var(--accent); letter-spacing: 0.05em; line-height: 1.15; }
+.bp-doc-sub { font-size: 7.5pt; color: #4b5563; margin-top: 0.5mm; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+.bp-footer {
+  position: absolute;
+  left: 12mm;
+  right: 12mm;
+  bottom: 7mm;
+  height: 6mm;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 6mm;
+  padding-top: 1.2mm;
+  border-top: 0.5mm solid var(--accent);
+  font-size: 7.5pt;
+  color: var(--accent);
+}
+.bp-footer .mid { color: #6b7280; flex: 1; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bp-footer .pg { font-weight: 600; white-space: nowrap; }
+
+.bp-content { position: absolute; left: 12mm; right: 12mm; top: 23mm; bottom: 15mm; overflow: hidden; }
+.bp-content > * + * { margin-top: 3.2mm; }
+
+/* Proje bilgileri */
+.bp-info { width: 100%; border-collapse: collapse; table-layout: fixed; font-size: 8pt; }
+.bp-info td { padding: 1.2mm 2mm; border: 0.25mm solid #cbd1da; vertical-align: top; overflow-wrap: anywhere; }
+.bp-info .k { width: 21mm; color: #6b7280; background: #f7f8fa; font-weight: 600; }
+.bp-info .v { font-weight: 600; }
+.bp-info .title { font-size: 9.5pt; font-weight: 700; }
+
+/* Tablo */
+.bp-table { width: 100%; border-collapse: collapse; table-layout: fixed; font-size: 7.8pt; line-height: 1.25; }
+.bp-table th {
+  background: #f1f2f5;
+  color: #3c4250;
+  font-weight: 700;
+  font-size: 7.2pt;
+  text-align: left;
+  padding: 1.3mm 1.3mm;
+  border-bottom: 0.35mm solid #15171c;
+  vertical-align: bottom;
+  overflow-wrap: anywhere;
+}
+.bp-table td { padding: 1.05mm 1.3mm; border-bottom: 0.2mm solid #d7dbe2; vertical-align: top; overflow-wrap: anywhere; }
+.bp-table .r { text-align: right; white-space: nowrap; }
+.bp-table .c { text-align: center; }
+.bp-table .code { font-weight: 700; }
+.bp-table .muted { color: #4b5563; }
+.bp-table .qty { font-weight: 700; }
+.bp-table .nl { padding-left: 3.2mm; }
+.bp-table tr.sec td { background: #fdecec; color: #b00000; font-weight: 700; font-size: 8.3pt; padding: 1.4mm 1.3mm; border-bottom: 0.3mm solid #e8b4b4; }
+.bp-table tr.sec .n { display: inline-block; min-width: 4.8mm; padding: 0 1mm; margin-right: 1.8mm; background: var(--accent); color: #fff; text-align: center; border-radius: 0.6mm; }
+.bp-table tr.sec .cont { font-weight: 400; color: #6b7280; margin-left: 1.5mm; }
+.bp-table tr.sub td { font-weight: 700; background: #fafbfc; border-bottom: 0.3mm solid #9aa1ad; }
+.bp-table tr.total td { font-weight: 700; font-size: 8.6pt; background: #eef0f4; border-top: 0.35mm solid #15171c; border-bottom: 0.35mm solid #15171c; }
+.bp-table tr.group td { background: #f1f2f5; font-weight: 700; font-size: 8.2pt; }
+
+.bp-h { display: flex; align-items: center; gap: 2.4mm; padding-bottom: 1.4mm; border-bottom: 0.6mm solid var(--accent); }
+.bp-h .n { display: flex; align-items: center; justify-content: center; min-width: 5.4mm; height: 5.4mm; padding: 0 1mm; background: var(--accent); color: #fff; font-weight: 700; font-size: 8.5pt; }
+.bp-h .t { font-weight: 700; font-size: 10pt; letter-spacing: 0.04em; }
+.bp-h .s { color: #6b7280; font-size: 8pt; margin-left: auto; }
+
+.bp-totals { display: flex; justify-content: flex-end; }
+.bp-totals table { border-collapse: collapse; min-width: 95mm; font-size: 8.5pt; }
+.bp-totals td { padding: 1.2mm 2.4mm; border-bottom: 0.2mm solid #d7dbe2; }
+.bp-totals td.r { text-align: right; white-space: nowrap; font-weight: 600; }
+.bp-totals tr.grand td { font-size: 10pt; font-weight: 700; background: #eef0f4; border-top: 0.35mm solid #15171c; border-bottom: 0.35mm solid #15171c; }
+.bp-note { font-size: 7.5pt; color: #4b5563; line-height: 1.45; }
+.bp-notes { border-left: 0.8mm solid var(--accent); padding: 1.6mm 3mm; background: #fafbfc; font-size: 8pt; line-height: 1.5; white-space: pre-wrap; }
+.bp-notes b { display: block; margin-bottom: 0.6mm; }
+.bp-share { display: inline-block; width: 30mm; height: 2.6mm; background: #eef0f4; vertical-align: middle; margin-right: 2mm; }
+.bp-share i { display: block; height: 100%; background: var(--accent); }
+
+.bp-measure { position: fixed; left: -30000px; top: 0; visibility: hidden; pointer-events: none; }

@@ -1,0 +1,9 @@
+node_modules/
+# Claude Code'un bu bilgisayara özel durumu
+.claude/
+# Örnek alınan P&PX projesi kendi deposudur (BOMX'in yanında durur), BOMX deposuna girmez
+P&PX/
+# Raporlardan üretilen liste ve komponent paketleri (fotoğraflı; şirket verisi)
+aktarim/
+BOMX elektrik komponentleri.json
+BOMX kutuphane paketi*.json

@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>BOMX · Malzeme Listesi</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%23d40000'/%3E%3Cpath d='M8 9h16M8 16h16M8 23h10' stroke='white' stroke-width='3' stroke-linecap='round'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="codes/bomx.css">
+  <link rel="stylesheet" href="codes/print.css">
+</head>
+<body>
+  <!-- Kurulum: veritabanı deposu ve erişim anahtarı -->
+  <div id="setup" class="setup hidden"></div>
+
+  <!-- Ana ekran -->
+  <section id="home" class="home hidden">
+    <div class="home-bar">
+      <img src="assets/logos/dolfin.png" alt="Dolfin" class="home-logo">
+      <div class="home-title">
+        <h1>BOMX · Malzeme Listesi</h1>
+        <p>BILL OF MATERIALS · PROJE · KOMPONENT KÜTÜPHANESİ</p>
+      </div>
+      <div class="home-actions">
+        <button type="button" class="btn btn-primary" id="btnNewProject">+ Yeni Proje</button>
+      </div>
+    </div>
+    <nav class="home-nav">
+      <button type="button" class="home-tab active" data-home-tab="projects">Projeler <span id="cntProjects" class="home-count"></span></button>
+      <button type="button" class="home-tab" data-home-tab="library">Komponentler <span id="cntLibrary" class="home-count"></span></button>
+      <button type="button" class="home-tab" data-home-tab="templates">Şablonlar <span id="cntTemplates" class="home-count"></span></button>
+      <button type="button" class="home-tab" data-home-tab="settings">Ayarlar</button>
+      <button type="button" class="home-tab" data-home-tab="db">Veritabanı <span id="cntDb" class="home-count"></span></button>
+      <div class="tb-spacer"></div>
+      <button type="button" class="db-chip" id="homeStatus"></button>
+    </nav>
+    <div id="homeBanner" class="home-banner hidden"></div>
+
+    <div id="homeProjects" class="home-page">
+      <div class="pj-toolbar">
+        <input type="search" id="pjSearch" class="search" placeholder="Seri no, müşteri, model ara…  (Ctrl+F)">
+        <select id="pjStatus" class="field-input"></select>
+        <select id="pjSort" class="field-input">
+          <option value="recent">Son değişen</option>
+          <option value="seri">Seri no</option>
+          <option value="musteri">Müşteri</option>
+          <option value="total">Toplam tutar</option>
+        </select>
+      </div>
+      <div id="projectGrid" class="pj-grid"></div>
+    </div>
+
+    <div id="homeLibrary" class="home-page hidden" data-drop>
+      <div class="lib-page">
+        <div class="lib-main">
+          <div class="lib-toolbar">
+            <input type="search" id="libSearch" class="search" placeholder="Kod, ad, üretici, parça no, tedarikçi ara…  (Ctrl+F)">
+            <select id="libFilter" class="field-input">
+              <option value="all">Tümü</option>
+              <option value="last" id="libFilterLast" hidden>Son aktarılanlar</option>
+              <option value="aktif">Yalnız aktifler</option>
+              <option value="fav">Favoriler</option>
+              <option value="noprice">Fiyatı olmayanlar</option>
+              <option value="unused">Hiçbir projede kullanılmayanlar</option>
+              <option value="pasif">Pasifler</option>
+            </select>
+            <button type="button" class="btn btn-sm lib-edit" id="libEdit" aria-pressed="false" title="Tabloda düzenleme: hücreye tıklayıp yazın, Enter alta, Tab sağa geçer">✎ Tabloda düzenle</button>
+            <button type="button" class="icon-btn sm" id="libUndo" title="Geri al (Ctrl+Z)" disabled>↶</button>
+            <button type="button" class="icon-btn sm" id="libRedo" title="Yinele (Ctrl+Y)" disabled>↷</button>
+            <div class="tb-spacer"></div>
+            <button type="button" class="btn btn-sm" id="libImport">İçe aktar ▾</button>
+            <button type="button" class="btn btn-sm" id="libExport">Dışa aktar ▾</button>
+            <button type="button" class="btn btn-sm btn-primary" id="libNew">+ Yeni komponent</button>
+          </div>
+          <div class="lib-filterbar">
+            <div id="libChips" class="chips lib-chips"></div>
+            <span id="libResult" class="lib-result"></span>
+          </div>
+          <div id="libBulk" class="lib-bulk hidden"></div>
+          <div id="libTable" class="grid-table"></div>
+        </div>
+        <aside id="libDrawer" class="drawer hidden"></aside>
+      </div>
+    </div>
+
+    <div id="homeTemplates" class="home-page hidden">
+      <div class="tp-page">
+        <aside class="side-list">
+          <div class="side-list-head"><h2>Şablonlar</h2><button type="button" class="btn btn-sm btn-primary" id="tpNew">+ Yeni şablon</button></div>
+          <input type="search" id="tpSearch" class="search" placeholder="Şablon ara…">
+          <ul id="tpList" class="side-items"></ul>
+        </aside>
+        <div id="tpEditor" class="tp-content"></div>
+      </div>
+    </div>
+
+    <div id="homeSettings" class="home-page hidden"><div class="scroll-page" id="settingsBody"></div></div>
+    <div id="homeDb" class="home-page hidden"><div class="scroll-page" id="dbBody"></div></div>
+  </section>
+
+  <!-- Malzeme listesi düzenleyicisi -->
+  <div id="app" class="app hidden">
+    <header class="topbar">
+      <button type="button" class="tb-logo" id="btnHome" title="Ana ekrana dön (projeler)" onclick="BomxApp.showHome()">
+        <img src="assets/logos/dolfin.png" alt="Dolfin">
+      </button>
+      <div class="tb-project">
+        <strong id="projName"></strong>
+        <span id="saveState" class="save-state"></span>
+      </div>
+      <div class="tb-group">
+        <button type="button" class="icon-btn" id="btnUndo" title="Geri al (Ctrl+Z)"><svg viewBox="0 0 20 20"><path d="M7 4L3 8l4 4M3 8h9a5 5 0 010 10H8"/></svg></button>
+        <button type="button" class="icon-btn" id="btnRedo" title="Yinele (Ctrl+Y)"><svg viewBox="0 0 20 20"><path d="M13 4l4 4-4 4M17 8H8a5 5 0 000 10h4"/></svg></button>
+      </div>
+      <div class="tb-group">
+        <button type="button" class="icon-btn" id="btnAddSection" title="Yeni bölüm (alt montaj, pano, pnömatik…)"><svg viewBox="0 0 20 20"><path d="M3 4h14M3 8h9M3 12h14M3 16h9M15 13v6M12 16h6"/></svg></button>
+        <button type="button" class="icon-btn" id="btnFreeLine" title="Serbest kalem (kütüphanede olmayan: işçilik, nakliye…)"><svg viewBox="0 0 20 20"><path d="M4 16l1-4 8-8 3 3-8 8zM11 6l3 3"/></svg></button>
+        <button type="button" class="icon-btn" id="btnPaste" title="Yapıştırarak ekle: Excel'den kod ve miktar (Ctrl+V)"><svg viewBox="0 0 20 20"><path d="M7 4H5.5A1.5 1.5 0 004 5.5v11A1.5 1.5 0 005.5 18h9a1.5 1.5 0 001.5-1.5v-11A1.5 1.5 0 0014.5 4H13"/><rect x="7" y="2.5" width="6" height="3" rx="1"/><path d="M7 10h6M7 13.5h4"/></svg></button>
+      </div>
+      <div class="tb-group">
+        <button type="button" class="icon-btn" id="btnDuplicate" title="Seçilenleri çoğalt (Ctrl+D)"><svg viewBox="0 0 20 20"><rect x="7" y="7" width="10" height="10" rx="1.5"/><path d="M13 7V4.5A1.5 1.5 0 0011.5 3h-7A1.5 1.5 0 003 4.5v7A1.5 1.5 0 004.5 13H7"/></svg></button>
+        <button type="button" class="icon-btn" id="btnMoveUp" title="Yukarı taşı (Alt+↑)"><svg viewBox="0 0 20 20"><path d="M10 16V4M5 9l5-5 5 5"/></svg></button>
+        <button type="button" class="icon-btn" id="btnMoveDown" title="Aşağı taşı (Alt+↓)"><svg viewBox="0 0 20 20"><path d="M10 4v12M5 11l5 5 5-5"/></svg></button>
+        <button type="button" class="icon-btn" id="btnDelete" title="Seçilenleri sil (Delete)"><svg viewBox="0 0 20 20"><path d="M3 5h14M8 5V3h4v2M5 5l1 12h8l1-12M8.5 8v6M11.5 8v6"/></svg></button>
+      </div>
+      <div class="tb-spacer"></div>
+      <div class="tb-status"><button type="button" class="db-chip" id="appStatus"></button></div>
+      <div class="tb-group">
+        <button type="button" class="btn btn-sm" id="btnSave" title="Kaydet (Ctrl+S); her değişiklik zaten kendiliğinden kaydedilir">Kaydet</button>
+        <button type="button" class="btn btn-sm" id="btnCsv" title="Noktalı virgüllü CSV (Türkçe Excel)">CSV</button>
+        <button type="button" class="btn btn-sm" id="btnExcel" title="Biçimli Excel: malzeme listesi, satın alma, özet">Excel</button>
+        <button type="button" class="btn btn-sm" id="btnPreview" title="Belge önizleme ve PDF seçenekleri (Ctrl+P)">Önizleme</button>
+        <button type="button" class="btn btn-sm btn-primary" id="btnPdf" title="Antetli PDF doğrudan indirilir">PDF İndir</button>
+      </div>
+    </header>
+
+    <aside class="left-panel">
+      <nav class="panel-tabs" id="leftTabs">
+        <button type="button" class="panel-tab active" data-tab="components">Komponentler</button>
+        <button type="button" class="panel-tab" data-tab="templates">Şablonlar</button>
+        <button type="button" class="panel-tab" data-tab="projects">Başka projeden</button>
+      </nav>
+      <section class="panel-body flush" id="lpComponents">
+        <div class="lp-head">
+          <div class="lp-search-row">
+            <input type="search" id="lpSearch" class="search" placeholder="Kod, ad, üretici, parça no…  ( / )" autocomplete="off" spellcheck="false">
+            <button type="button" class="btn btn-sm" id="lpNew" title="Kütüphaneye yeni komponent">+ Yeni</button>
+            <button type="button" class="icon-btn sm" id="lpInfoToggle" title="Bilgi kartını göster / gizle">ⓘ</button>
+          </div>
+          <div class="lp-filters">
+            <select id="lpCategory" class="field-input" title="Kategori"></select>
+            <select id="lpFilter" class="field-input" title="Süzgeç">
+              <option value="aktif">Aktif komponentler</option>
+              <option value="fav">Favoriler</option>
+              <option value="used">Bu listede olanlar</option>
+              <option value="unused">Bu listede olmayanlar</option>
+              <option value="all">Pasifler dahil tümü</option>
+            </select>
+          </div>
+          <div class="lp-target" id="lpTargetWrap" title="Eklenen komponent bu bölüme gider; tabloda bölüm başlığına tıklayarak da seçilir">Eklenecek bölüm <select id="lpTarget"></select></div>
+          <div class="lp-info"><span id="lpCount"></span><span><kbd>↑</kbd><kbd>↓</kbd> seç · <kbd>Enter</kbd> ekle</span></div>
+        </div>
+        <div class="lp-list" id="lpList"></div>
+        <div class="lp-detail hidden" id="lpDetail"></div>
+      </section>
+      <section class="panel-body hidden" id="lpTemplates">
+        <div class="lt-actions">
+          <button type="button" class="btn btn-sm" id="ltFromSel" title="Tabloda seçili kalemlerden şablon">Seçilenlerden şablon</button>
+          <button type="button" class="btn btn-sm btn-ghost" id="ltManage">Şablonları yönet</button>
+        </div>
+        <div id="ltList" style="display:flex;flex-direction:column;gap:8px"></div>
+      </section>
+      <section class="panel-body hidden" id="lpProjects">
+        <select id="lprSelect" class="field-input"></select>
+        <div id="lprBody"></div>
+      </section>
+    </aside>
+
+    <main class="bom-wrap">
+      <div class="bom-toolbar">
+        <input type="search" id="bomFilter" class="search" placeholder="Listede ara…  (Ctrl+F)" autocomplete="off">
+        <span id="bomCount" class="muted"></span>
+        <div class="tb-spacer"></div>
+        <button type="button" class="btn btn-xs btn-ghost" id="btnCollapseAll" title="Bütün bölümleri daralt / aç">Daralt / aç</button>
+        <button type="button" class="btn btn-xs btn-ghost" id="btnColumns" title="Görünen sütunlar (tablo başlığına sağ tık da açar)">Sütunlar ▾</button>
+      </div>
+      <div class="bom-scroll" id="bomScroll"><div class="bt" id="bomTable"></div></div>
+    </main>
+
+    <aside class="right-panel">
+      <nav class="panel-tabs" id="rightTabs">
+        <button type="button" class="panel-tab active" data-tab="props">Özellikler</button>
+        <button type="button" class="panel-tab" data-tab="checks">Kontrol <span id="checkBadge" class="badge hidden"></span></button>
+      </nav>
+      <section class="panel-body" id="rpProps"><div id="inspector" class="inspector"></div></section>
+      <section class="panel-body hidden" id="rpChecks"><div id="checkList" class="check-list"></div></section>
+    </aside>
+
+    <section class="dock" id="dock">
+      <div class="dock-resize" id="dockResize" title="Yüksekliği değiştirmek için sürükleyin"></div>
+      <nav class="dock-tabs">
+        <button type="button" class="dock-tab" data-dock="summary">Özet <span id="dcSummary" class="dock-count"></span></button>
+        <button type="button" class="dock-tab" data-dock="purchase" title="Tedarikçiye göre, bölümler arasında toplanmış liste">Satın Alma <span id="dcPurchase" class="dock-count"></span></button>
+        <button type="button" class="dock-tab" data-dock="diff" title="Son revizyondan bu yana eklenen, çıkarılan, değişen">Revizyon Farkı <span id="dcDiff" class="dock-count"></span></button>
+        <button type="button" class="dock-tab" data-dock="refs" title="P&ID kodu (referans) → kalem">Referanslar <span id="dcRefs" class="dock-count"></span></button>
+        <div class="tb-spacer"></div>
+        <button type="button" class="icon-btn dock-toggle" id="dockToggle"></button>
+      </nav>
+      <div class="dock-body" id="dockBody"></div>
+    </section>
+
+    <footer class="bottombar">
+      <div id="secTabs" class="sec-tabs"></div>
+      <div class="tb-spacer"></div>
+      <div id="totals" class="totals"></div>
+    </footer>
+  </div>
+
+  <!-- Belge önizleme -->
+  <div id="studioRoot" class="studio hidden">
+    <div class="studio-bar">
+      <h2 id="studioTitle">Belge önizleme</h2>
+      <div class="studio-opts"></div>
+      <div class="tb-spacer"></div>
+      <span class="studio-info" id="studioInfo"></span>
+      <button type="button" class="btn btn-sm" id="studioXlsx">Excel</button>
+      <button type="button" class="btn btn-sm btn-primary" id="studioPdf">PDF İndir</button>
+      <button type="button" class="btn btn-sm" id="studioClose" title="Kapat (Esc)">Kapat</button>
+    </div>
+    <div class="studio-pages" id="studioPages"></div>
+  </div>
+
+  <datalist id="unitList"></datalist>
+  <datalist id="categoryList"></datalist>
+  <div id="printRoot"></div>
+  <div id="modalRoot"></div>
+  <div id="toast" class="toast hidden"></div>
+
+  <script src="ortak/bomx-db.js"></script>
+  <script src="ortak/bomx-github.js"></script>
+  <script src="codes/model.js"></script>
+  <script src="codes/store.js"></script>
+  <script src="codes/xlsx.js"></script>
+  <script src="codes/reports.js"></script>
+  <script src="ortak/bomx-boot.js"></script>
+  <script src="codes/ui/util.js"></script>
+  <script src="codes/ui/grid.js"></script>
+  <script src="codes/ui/setup.js"></script>
+  <script src="codes/ui/library.js"></script>
+  <script src="codes/ui/home.js"></script>
+  <script src="codes/ui/editor.js"></script>
+  <script src="codes/ui/panels.js"></script>
+  <script src="codes/ui/output.js"></script>
+  <script src="codes/app.js"></script>
+</body>
+</html>
