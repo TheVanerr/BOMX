@@ -38,6 +38,7 @@ const BomxOutput = (() => {
     return o.project || ed().project;
   }
 
+  const lineComponent = (line) => (line.komponentId ? app().state.libraryById.get(line.komponentId) || null : null);
   const linePhoto = (line) => (line.komponentId ? app().photoOf(line.komponentId) : '');
 
   async function exportExcel(options) {
@@ -47,7 +48,7 @@ const BomxOutput = (() => {
     if (!o.project) await ed().flush();
     const out = M.normalizeOutput(p.cikti);
     try {
-      const bytes = BomxXlsx.bomWorkbook(p, { lang: p.dil, purchase: true, summary: true, revisions: out.revizyonlar, photoOf: linePhoto });
+      const bytes = BomxXlsx.bomWorkbook(p, { lang: p.dil, purchase: true, summary: true, revisions: out.revizyonlar, photoOf: linePhoto, componentOf: lineComponent });
       const name = `${U.fileName(p.id)} BOM Rev.${p.rev}${o.purchaseOnly ? ' satin alma' : ''}.xlsx`;
       U.download(new Blob([bytes], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }), name);
       U.toast(`Excel indirildi: ${name}${o.purchaseOnly ? ' (Satın Alma sayfası ikinci sekmede)' : ''}`);
@@ -60,7 +61,7 @@ const BomxOutput = (() => {
     const p = current(options);
     if (!p) return;
     const name = `${U.fileName(p.id)} BOM Rev.${p.rev}.csv`;
-    U.download(new Blob([M.toCsv(M.projectToCsvRows(p, p.dil))], { type: 'text/csv;charset=utf-8' }), name);
+    U.download(new Blob([M.toCsv(M.projectToCsvRows(p, p.dil, app().state.libraryById))], { type: 'text/csv;charset=utf-8' }), name);
     U.toast(`CSV indirildi: ${name}`);
   }
 
@@ -81,7 +82,7 @@ const BomxOutput = (() => {
       }
       case 'miktar': return esc(col.plain ? M.formatQty(line.miktar) : M.qtyText(line, lang));
       case 'birim': return esc(M.unitText(line.birim, lang));
-      case 'aciklama': return esc(M.docSafe(M.lineDescription(line, lang)));
+      case 'aciklama': return esc(M.docSafe(M.lineDescription(line, lang, lineComponent(line))));
       default: return esc(M.docSafe(line[col.key]));
     }
   }

@@ -440,7 +440,7 @@
       }
       for (const { line } of items) {
         const photo = photoFor(line);
-        const description = M.lineDescription(line, lang);
+        const description = M.lineDescription(line, lang, o.componentOf ? o.componentOf(line) : null);
         const value = {
           foto: { value: '', style: S.text },
           kod: { value: line.kod, style: S.code },

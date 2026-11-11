@@ -838,10 +838,23 @@
     return rev.rev === '00' && (!rev.aciklama || rev.aciklama === DOC_TEXT.tr.firstIssue) ? T.firstIssue : rev.aciklama;
   }
 
-  /** Kalemin istenen dildeki açıklaması; o dilde yoksa Türkçesi */
-  function lineDescription(line, lang) {
-    return (lang === 'en' && line.aciklamaEn) || (lang === 'de' && line.aciklamaDe) || line.aciklama || '';
+  const LANG_FIELD = { en: 'aciklamaEn', de: 'aciklamaDe' };
+  const LANG_NAME = { en: 'İngilizce', de: 'Almanca' };
+
+  /** Kalemin o dildeki çevirisi: kalemde yoksa (çeviri sonradan girildiyse) kütüphanedeki güncel çeviri */
+  function translationOf(line, lang, component) {
+    const key = LANG_FIELD[lang];
+    if (!key) return '';
+    return line[key] || (component ? bomDescription(component[key]) : '');
   }
+
+  /** Kalemin istenen dildeki açıklaması; çevirisi yoksa Türkçesi */
+  function lineDescription(line, lang, component) {
+    return translationOf(line, lang, component) || line.aciklama || '';
+  }
+
+  /** Türkçe açıklaması olan kalemin o dilde çevirisi var mı (Türkçede her zaman evet) */
+  const hasTranslation = (line, lang, component) => !LANG_FIELD[lang] || !line.aciklama || !!translationOf(line, lang, component);
 
   function lineFromComponent(component, qty, sectionId) {
     const c = normalizeComponent(component);
@@ -857,7 +870,8 @@
   /** Kalemin kütüphanedeki hâlden farklı alanları (tanım, model kodu...) */
   function libraryDiff(line, component) {
     if (!component) return [];
-    return SNAPSHOT_FIELDS.filter((key) => clean(line[key]) !== clean(snapshotValue(component, key)));
+    // Kalemde boş çeviri fark sayılmaz: belgede kütüphanedeki çeviri yazar
+    return SNAPSHOT_FIELDS.filter((key) => !((key === 'aciklamaEn' || key === 'aciklamaDe') && !clean(line[key])) && clean(line[key]) !== clean(snapshotValue(component, key)));
   }
 
   function refreshFromLibrary(line, component, fields) {
@@ -1032,6 +1046,10 @@
     if (deleted.length) push('warn', `Kütüphanede silinmiş komponent: ${listCodes(deleted)}. Kalem bilgileri listede durur.`, deleted);
     if (relink.length) push('info', `Kütüphanede aynı kodlu kayıt var, bağlanabilir: ${listCodes(relink)}`, relink, { kind: 'relink' });
     if (free.length) push('info', `Kütüphanede olmayan (serbest) kalem: ${listCodes(free)}`, free);
+    if (LANG_FIELD[project.dil]) {
+      const untranslated = project.kalemler.filter((l) => !hasTranslation(l, project.dil, l.komponentId ? lib.get(l.komponentId) : null));
+      if (untranslated.length) push('warn', `${LANG_NAME[project.dil]} açıklaması olmayan ${untranslated.length} kalem (belgede Türkçesi yazar): ${listCodes(untranslated)}. Kütüphanede “Açıklama (${project.dil.toUpperCase()})” alanını doldurun.`, untranslated);
+    }
     if (passive.length) push('warn', `Pasif (kullanımdan kalkmış) komponent: ${listCodes(passive)}`, passive);
     const allChanged = new Set();
     for (const [field, lines] of changed) {
@@ -1451,13 +1469,15 @@
 
   /**
    * Aktarma planı. mode: 'merge' (yeniler eklenir, var olanların dolu alanları güncellenir),
-   * 'add' (yalnız yeni kodlar), 'replace' (var olanların eşleşen alanları dosyadakiyle değişir, boşlar da)
+   * 'add' (yalnız yeni kodlar), 'replace' (var olanların eşleşen alanları dosyadakiyle değişir, boşlar da),
+   * 'ceviri' (yalnız var olan kodların dolu EN / DE açıklaması yazılır; yeni kod eklenmez, başka alana dokunulmaz:
+   * ayıklanmış kod geri gelmez, kütüphanede düzeltilen alan dosyadakiyle ezilmez)
    */
   function planImport(items, library, mode) {
     const byKey = new Map();
     for (const c of library) byKey.set(codeKey(c.kod), c);
     // rows: her satırın sonucu (önizlemede satır satır gösterilir); add / update: uygulanacaklar
-    const plan = { add: [], update: [], same: 0, invalid: [], repeated: 0, rows: [] };
+    const plan = { add: [], update: [], same: 0, absent: 0, invalid: [], repeated: 0, rows: [] };
     const seenInFile = new Map();
     const invalid = (row, reason, kod) => {
       plan.invalid.push({ row, reason: kod ? `${kod}: ${reason}` : reason });
@@ -1482,6 +1502,12 @@
       }
       const key = codeKey(kod);
       const existing = byKey.get(key);
+      if (!existing && mode === 'ceviri') {
+        if (!claim(key, row)) continue;
+        plan.absent += 1;
+        plan.rows.push({ row, status: 'absent', reason: 'Kod kütüphanede yok; bu kipte eklenmez' });
+        continue;
+      }
       if (!existing) {
         if (!clean(fields.ad)) {
           invalid(row, 'Ad yok', kod);
@@ -1508,8 +1534,9 @@
       const changes = [];
       for (const f of COMPONENT_FIELDS) {
         if (f.key === 'kod' || !(f.key in fields)) continue;
-        // "Güncelle" kipinde boş hücre atlanır: boş birim "Adet", boş favori "hayır" olmaz
-        if (mode === 'merge' && blank(fields[f.key])) continue;
+        if (mode === 'ceviri' && f.key !== 'aciklamaEn' && f.key !== 'aciklamaDe') continue;
+        // "Güncelle" ve "çeviri" kipinde boş hücre atlanır: boş birim "Adet", boş favori "hayır" olmaz
+        if ((mode === 'merge' || mode === 'ceviri') && blank(fields[f.key])) continue;
         const incoming = normalizeComponent(Object.assign({}, existing, { [f.key]: fields[f.key] }))[f.key];
         if (!sameValue(existing[f.key], incoming)) {
           next[f.key] = incoming;
@@ -1655,12 +1682,13 @@
     return lang === 'en' ? s.en : lang === 'de' ? s.de : s.label;
   }
 
-  function projectToCsvRows(project, lang) {
+  /** @param library Map komponentId → komponent (çevirisi kalemde olmayan açıklama için) */
+  function projectToCsvRows(project, lang, library) {
     const T = docText(lang);
     const rows = [[T.section, T.code, T.name, T.makerCode, T.qty, T.desc]];
     for (const { line, section } of numberedLines(project)) {
       const qty = isPieceUnit(line.birim) ? csvNumber(line.miktar, 3) : `${csvNumber(line.miktar, 3)} ${unitText(line.birim, lang)}`;
-      rows.push([section.ad, line.kod, line.ad, line.ureticiKodu, qty, lineDescription(line, lang).replace(/\n+/g, ' ')]);
+      rows.push([section.ad, line.kod, line.ad, line.ureticiKodu, qty, lineDescription(line, lang, library && line.komponentId ? library.get(line.komponentId) : null).replace(/\n+/g, ' ')]);
     }
     return rows;
   }
@@ -1756,6 +1784,8 @@
     freeLine,
     bomDescription,
     lineDescription,
+    translationOf,
+    hasTranslation,
     docSafe,
     revisionNote,
     qtyText,

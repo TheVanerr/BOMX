@@ -188,6 +188,7 @@ const BomxLibrary = (() => {
     if (S.category) list = list.filter((c) => (c.kategori || '') === (S.category === '__none' ? '' : S.category));
     if (S.filter === 'fav') list = list.filter((c) => c.favori);
     else if (S.filter === 'unused') list = list.filter((c) => !st.usage.get(c.id));
+    else if (S.filter === 'ceviri') list = list.filter((c) => M.bomDescription(c.aciklama) && (!M.bomDescription(c.aciklamaEn) || !M.bomDescription(c.aciklamaDe)));
     else if (S.filter === 'pasif') list = list.filter((c) => c.pasif);
     else if (S.filter === 'aktif') list = list.filter((c) => !c.pasif);
     else if (S.filter === 'last') {
@@ -226,6 +227,8 @@ const BomxLibrary = (() => {
       { key: 'tedarikci', width: '130px', label: 'Tedarikçi', sort: true, editable: true, list: () => distinct('tedarikci'), cell: (c) => hl(c.tedarikci) },
       { key: 'birim', width: '62px', label: 'Birim', editable: true, className: 'c-muted', list: () => st.settings.birimler },
       S.edit ? { key: 'aciklama', width: 'minmax(200px, 1.5fr)', label: 'Açıklama', editable: true, kind: 'multiline', className: 'c-muted', cell: (c) => esc(firstLine(c.aciklama)), value: (c) => c.aciklama || '', title: (c) => c.aciklama || '' } : null,
+      S.edit ? { key: 'aciklamaEn', width: 'minmax(180px, 1.2fr)', label: 'Açıklama (EN)', editable: true, kind: 'multiline', className: 'c-muted', cell: (c) => (c.aciklamaEn ? esc(firstLine(c.aciklamaEn)) : '<span class="c-missing">çeviri yok</span>'), value: (c) => c.aciklamaEn || '', title: (c) => c.aciklamaEn || '' } : null,
+      S.edit ? { key: 'aciklamaDe', width: 'minmax(180px, 1.2fr)', label: 'Açıklama (DE)', editable: true, kind: 'multiline', className: 'c-muted', cell: (c) => (c.aciklamaDe ? esc(firstLine(c.aciklamaDe)) : '<span class="c-missing">çeviri yok</span>'), value: (c) => c.aciklamaDe || '', title: (c) => c.aciklamaDe || '' } : null,
       { key: 'kullanim', width: '78px', label: 'Kullanım', sort: true, align: 'right', className: 'c-muted', cell: (c) => { const used = st.usage.get(c.id) || 0; return used ? `${used} proje` : ''; } },
       { key: 'zaman', width: '110px', label: 'Güncelleme', sort: true, className: 'c-muted', cell: (c) => esc(U.relTime(c.zaman)), title: (c) => c.zaman }
     ].filter(Boolean);
@@ -386,7 +389,7 @@ const BomxLibrary = (() => {
     const fresh = app().state.libraryById.get(c.id);
     if (!fresh) return 'Komponent bu arada silinmiş';
     let value = text;
-    if (key === 'aciklama') {
+    if (key.startsWith('aciklama')) {
       value = M.cleanMultiline(text);
     } else {
       value = M.clean(text);
@@ -783,6 +786,7 @@ const BomxLibrary = (() => {
     same: ['Değişmeyecek', 'gray', 'Kod kütüphanede var; değişen bir şey yok'],
     invalid: ['Hatalı', 'red-soft', 'Düzeltilmeden alınmaz'],
     repeat: ['Tekrar', 'red-soft', 'Aynı kod listede daha önce geçiyor; ilk satır alınır'],
+    absent: ['Kütüphanede yok', 'gray', 'Kod kütüphanede yok (ayıklanmış olabilir); yalnız çeviri kipinde eklenmez'],
     skip: ['Alınmayacak', 'gray', 'Satır başındaki kutuyla aktarmaya dahil edilir']
   };
   const CLASS_TONES = { elektrik: 'blue', reduktor: 'blue', komple: 'amber', diger: 'gray' };
@@ -868,7 +872,8 @@ const BomxLibrary = (() => {
      * fotoğrafı yoksa eklenir (her kipte; var olan fotoğrafa dokunulmaz), "değiştir" kipinde dosyadakiyle değişir.
      */
     function photoTarget(x) {
-      if (!x.include || !x.foto) return null;
+      // Yalnız çeviri kipinde fotoğrafa dokunulmaz
+      if (!x.include || !x.foto || state.mode === 'ceviri') return null;
       const r = state.statusOf.get(x.sid);
       if (!r) return null;
       if (r.status === 'new') return r.component.id;
@@ -950,14 +955,19 @@ const BomxLibrary = (() => {
       const settings = app().state.settings;
       // Dosyada hiç değeri olmayan sütun gösterilmez (toplu atamayla değer gelince görünür)
       const present = (k) => state.items.some((x) => x.fields[k] !== undefined && x.fields[k] !== null && x.fields[k] !== '');
-      const show = (k) => k === 'kod' || k === 'ad' || k === 'kategori' || (classed ? ['uretici', 'ureticiKodu', 'birim', 'aciklama'].includes(k) || present(k) : present(k));
-      const photos = state.items.some((x) => x.foto);
+      // Yalnız çeviri kipinde kod, tanım ve üç dilde açıklama görünür; yalnız EN / DE düzeltilebilir
+      const ceviri = state.mode === 'ceviri';
+      const show = ceviri
+        ? (k) => ['kod', 'ad', 'aciklama', 'aciklamaEn', 'aciklamaDe'].includes(k)
+        : (k) => k === 'kod' || k === 'ad' || k === 'kategori' || (classed ? ['uretici', 'ureticiKodu', 'birim', 'aciklama'].includes(k) || present(k) : present(k));
+      const photos = !ceviri && state.items.some((x) => x.foto);
+      const fixed = ceviri ? { editable: false } : {};
       const list = [
         { key: '__durum', width: '118px', label: 'Durum', cell: statusChip, title: statusTitle },
         classed ? { key: '__tur', width: '128px', label: 'Tür', cell: classChip, title: classTitle } : null,
         photos ? { key: '__foto', width: '44px', label: 'Foto', className: 'c-foto', headTitle: 'Fotoğraf komponentle birlikte aktarılır; tıklayınca büyür', title: (x) => (x.foto ? x.fotoKaynagi || 'Fotoğraf' : ''), cell: (x) => (x.foto ? `<img class="gt-thumb" src="${esc(x.foto)}" alt="" loading="lazy" data-act="foto">` : '') } : null,
-        { key: 'kod', width: '122px', label: 'Stok Kodu', className: 'c-kod' },
-        { key: 'ad', width: 'minmax(220px, 2fr)', label: 'Tanım' },
+        Object.assign({ key: 'kod', width: '122px', label: 'Stok Kodu', className: 'c-kod' }, fixed),
+        Object.assign({ key: 'ad', width: 'minmax(220px, 2fr)', label: 'Tanım' }, fixed),
         { key: 'kategori', width: '130px', label: 'Kategori', list: categories },
         { key: 'uretici', width: '120px', label: 'Üretici', list: () => distinct('uretici') },
         { key: 'ureticiKodu', width: '160px', label: 'Model Kodu' },
@@ -966,7 +976,9 @@ const BomxLibrary = (() => {
         { key: 'birim', width: '62px', label: 'Birim', list: () => settings.birimler },
         { key: 'teslimSuresi', width: '74px', label: 'Teslim', align: 'right', kind: 'number' },
         { key: 'link', width: '140px', label: 'Bağlantı' },
-        { key: 'aciklama', width: 'minmax(220px, 1.6fr)', label: 'Açıklama', kind: 'multiline', className: 'c-muted', cell: (x) => esc(firstLine(fieldText(x, 'aciklama'))) }
+        Object.assign({ key: 'aciklama', width: 'minmax(220px, 1.6fr)', label: 'Açıklama', kind: 'multiline', className: 'c-muted', cell: (x) => esc(firstLine(fieldText(x, 'aciklama'))) }, fixed),
+        { key: 'aciklamaEn', width: 'minmax(200px, 1.4fr)', label: 'Açıklama (EN)', kind: 'multiline', className: 'c-muted', cell: (x) => esc(firstLine(fieldText(x, 'aciklamaEn'))) },
+        { key: 'aciklamaDe', width: 'minmax(200px, 1.4fr)', label: 'Açıklama (DE)', kind: 'multiline', className: 'c-muted', cell: (x) => esc(firstLine(fieldText(x, 'aciklamaDe'))) }
       ].filter(Boolean).filter((c) => c.key.startsWith('__') || show(c.key));
       return list.map((c) => (c.key.startsWith('__') ? c : Object.assign({
         editable: true,
@@ -1002,13 +1014,13 @@ const BomxLibrary = (() => {
     }
 
     function chipsHtml() {
-      const counts = { all: state.items.length, new: 0, update: 0, same: 0, invalid: 0, skip: 0 };
+      const counts = { all: state.items.length, new: 0, update: 0, same: 0, absent: 0, invalid: 0, skip: 0 };
       for (const x of state.items) {
         const s = statusOf(x).status;
         counts[s === 'repeat' ? 'invalid' : s] += 1;
       }
       const chip = (key, label, n) => `<button type="button" class="chip-filter${state.f.status === key ? ' active' : ''}" data-status="${key}">${esc(label)} <span>${n}</span></button>`;
-      let html = `<div class="chips">${chip('', 'Tümü', counts.all)}${chip('new', 'Yeni', counts.new)}${chip('update', 'Güncellenecek', counts.update)}${chip('same', 'Değişmeyecek', counts.same)}${chip('invalid', 'Hatalı', counts.invalid)}${chip('skip', 'Alınmayacak', counts.skip)}</div>`;
+      let html = `<div class="chips">${chip('', 'Tümü', counts.all)}${chip('new', 'Yeni', counts.new)}${chip('update', 'Güncellenecek', counts.update)}${chip('same', 'Değişmeyecek', counts.same)}${counts.absent ? chip('absent', 'Kütüphanede yok', counts.absent) : ''}${chip('invalid', 'Hatalı', counts.invalid)}${chip('skip', 'Alınmayacak', counts.skip)}</div>`;
       if (classed) {
         const cls = {};
         for (const x of state.items) {
@@ -1051,6 +1063,7 @@ const BomxLibrary = (() => {
               <option value="merge"${state.mode === 'merge' ? ' selected' : ''}>dolu alanları güncelle (önerilen)</option>
               <option value="add"${state.mode === 'add' ? ' selected' : ''}>dokunma, yalnız yenileri ekle</option>
               <option value="replace"${state.mode === 'replace' ? ' selected' : ''}>dosyadakiyle değiştir (boşlar da)</option>
+              <option value="ceviri"${state.mode === 'ceviri' ? ' selected' : ''}>yalnız EN / DE açıklamaları al (yeni kod eklenmez)</option>
             </select></label>
         </div>
         <div class="grid-table im-grid editable" id="imGrid"></div>`;
@@ -1095,8 +1108,8 @@ const BomxLibrary = (() => {
         vis.textContent = shown === state.items.length ? `${shown} satır` : `${shown} / ${state.items.length} satır görünüyor`;
       }
       const photos = photoJobs(null).length;
-      const go = n ? `${n} komponenti kütüphaneye aktar` : photos ? `${photos} fotoğrafı kütüphaneye ekle` : 'Aktarılacak değişiklik yok';
-      U.$('imActions').innerHTML = `<span class="left muted" id="imNote">${plan.add.length} yeni · ${plan.update.length} güncellenecek · ${plan.same} değişmeyecek${photos ? ` · ${photos} fotoğraf yazılacak` : ''}${bad ? ` · <span class="err-text">${bad} hatalı / tekrar (alınmaz)</span>` : ''}${excluded ? ` · ${excluded} alınmayacak` : ''}</span>
+      const go = n ? (state.mode === 'ceviri' ? `${n} komponentin çevirisini yaz` : `${n} komponenti kütüphaneye aktar`) : photos ? `${photos} fotoğrafı kütüphaneye ekle` : 'Aktarılacak değişiklik yok';
+      U.$('imActions').innerHTML = `<span class="left muted" id="imNote">${plan.add.length} yeni · ${plan.update.length} güncellenecek · ${plan.same} değişmeyecek${plan.absent ? ` · ${plan.absent} kütüphanede yok (eklenmez)` : ''}${photos ? ` · ${photos} fotoğraf yazılacak` : ''}${bad ? ` · <span class="err-text">${bad} hatalı / tekrar (alınmaz)</span>` : ''}${excluded ? ` · ${excluded} alınmayacak` : ''}</span>
         ${state.rows || state.tables ? '<button type="button" class="btn" id="imBack" title="Sütun eşleştirmeye dön">← Sütunlar</button>' : ''}
         <button type="button" class="btn" data-close>Vazgeç</button>
         <button type="submit" class="btn btn-primary"${n || photos ? '' : ' disabled'}>${go}</button>`;
@@ -1114,7 +1127,7 @@ const BomxLibrary = (() => {
     /* ── Düzenleme ── */
 
     async function commitStaged(x, key, text) {
-      let value = key === 'aciklama' ? M.cleanMultiline(text) : M.clean(text);
+      let value = key.startsWith('aciklama') ? M.cleanMultiline(text) : M.clean(text);
       if (key === 'teslimSuresi') {
         if (value !== '' && (M.parseNumber(value) === null || M.parseNumber(value) < 0)) return `"${value}" geçerli bir sayı değil`;
       }

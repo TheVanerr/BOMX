@@ -124,12 +124,24 @@ test('açıklama belgenin dilinde gelir; o dilde yoksa Türkçesi yazar', () => 
   assert.equal(M.lineDescription(line, 'tr'), 'Pompa');
   assert.equal(M.lineDescription(line, 'en'), 'Pump');
   assert.equal(M.lineDescription(line, 'de'), 'Pompa');
-  assert.deepEqual(M.libraryDiff(line, Object.assign({}, c, { aciklamaDe: 'Pumpe' })), ['aciklamaDe']);
+  assert.deepEqual(M.libraryDiff(line, Object.assign({}, c, { aciklamaDe: 'Pumpe' })), [], 'kalemde boş çeviri fark değildir');
+  assert.deepEqual(M.libraryDiff(Object.assign({}, line, { aciklamaEn: 'Eski' }), c), ['aciklamaEn'], 'dolu çeviri farkı gösterilir');
   const p = project([Object.assign({}, line, { id: 'l1', bolum: 's1' })]);
   assert.equal(M.projectToCsvRows(p, 'en')[1][5], 'Pump');
   assert.equal(M.docSafe('−40…+120 °C, ≤100 V, 10 kΩ'), '-40…+120 °C, <=100 V, 10 kohm', 'PDF yazı tipinde olmayan işaretler');
   assert.equal(M.revisionNote({ rev: '00', aciklama: 'İlk yayın' }, M.docText('en')), 'First issue');
   assert.equal(M.revisionNote({ rev: '00', aciklama: 'Müşteri onayı' }, M.docText('en')), 'Müşteri onayı');
+  // Çeviri kütüphaneye sonradan girildiyse eski kalem de kütüphanedeki çeviriyle yazar; boş çeviri fark sayılmaz
+  const old = M.normalizeLine({ komponentId: 'c2', kod: 'B', ad: 'B', aciklama: 'Vana' });
+  const lib2 = M.normalizeComponent({ id: 'c2', kod: 'B', ad: 'B', aciklama: 'Vana', aciklamaEn: 'Valve' });
+  assert.equal(M.lineDescription(old, 'en', lib2), 'Valve');
+  assert.equal(M.lineDescription(old, 'de', lib2), 'Vana');
+  assert.deepEqual(M.libraryDiff(old, lib2), []);
+  assert.equal(M.hasTranslation(old, 'en', lib2), true);
+  assert.equal(M.hasTranslation(old, 'de', lib2), false);
+  const pp = project([Object.assign({}, old, { id: 'l1', bolum: 's1', miktar: 1 })], { dil: 'de' });
+  assert.match(M.checkProject(pp, new Map([['c2', lib2]])).map((c) => c.text).join(' | '), /Almanca açıklaması olmayan 1 kalem/);
+  assert.equal(M.projectToCsvRows(Object.assign({}, pp, { dil: 'en' }), 'en', new Map([['c2', lib2]]))[1][5], 'Valve');
   assert.equal(M.normalizeOutput({}).kapak, true, 'kapak varsayılan olarak açık');
   assert.equal(M.normalizeOutput({ kapak: false }).kapak, false);
   for (const [lang] of M.DOC_LANGS) for (const key of ['docType', 'docTypeValue', 'pages', 'title']) assert.ok(M.docText(lang)[key], `${lang}.${key}`);
@@ -393,6 +405,27 @@ test('aktarma planı yeni, güncellenecek, değişmeyen ve hatalı satırları a
   const add = M.planImport(items, library, 'add');
   assert.equal(add.update.length, 0);
   assert.equal(add.same, 1);
+});
+
+test('yalnız çeviri kipi var olan kodun EN / DE açıklamasını yazar, yeni kod eklemez, başka alana dokunmaz', () => {
+  const library = [M.normalizeComponent({ id: 'c1', kod: 'PE01', ad: 'Pompa (düzeltildi)', aciklama: 'Grundfos pompa', aciklamaDe: 'Pumpe (eigene)' })];
+  const items = [
+    { row: 1, fields: { kod: 'PE01', ad: 'Pompa', kategori: 'Motor', aciklama: 'Eski', aciklamaEn: 'Grundfos pump', aciklamaDe: '' } },
+    { row: 2, fields: { kod: 'AYIKLANAN', ad: 'Gereksiz kod', aciklamaEn: 'Unused' } },
+    { row: 3, fields: { kod: 'PE01', ad: 'Pompa', aciklamaEn: 'Tekrar' } }
+  ];
+  const plan = M.planImport(items, library, 'ceviri');
+  assert.equal(plan.add.length, 0, 'kütüphanede olmayan kod eklenmez');
+  assert.equal(plan.absent, 1);
+  assert.equal(plan.rows.find((r) => r.row === 2).status, 'absent');
+  assert.equal(plan.repeated, 1);
+  assert.deepEqual(plan.update[0].changes, ['aciklamaEn']);
+  const after = plan.update[0].after;
+  assert.equal(after.ad, 'Pompa (düzeltildi)', 'tanım dosyadakiyle ezilmez');
+  assert.equal(after.aciklama, 'Grundfos pompa');
+  assert.equal(after.kategori, '');
+  assert.equal(after.aciklamaDe, 'Pumpe (eigene)', 'dosyada boş çeviri var olanı silmez');
+  assert.equal(M.planImport([items[0]], [Object.assign({}, library[0], { aciklamaEn: 'Grundfos pump' })], 'ceviri').same, 1);
 });
 
 test('kütüphane CSV olarak verilip geri okunduğunda aynı kalır', () => {

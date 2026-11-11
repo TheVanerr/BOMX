@@ -643,7 +643,7 @@ const BomxPanels = (() => {
     const libValue = (f) => (f.startsWith('aciklama') ? M.bomDescription(comp[f]) : comp[f]);
     const usage = comp ? app().usageOf(comp.id).filter((x) => x.id !== p.id) : [];
     const photo = line.komponentId ? app().photoOf(line.komponentId) : '';
-    const info = [['Stok kodu', line.kod], ['Tanım', line.ad], ['Model kodu', line.ureticiKodu], ['Açıklama', M.lineDescription(line, p.dil)]].filter(([, v]) => v);
+    const info = [['Stok kodu', line.kod], ['Tanım', line.ad], ['Model kodu', line.ureticiKodu], ['Açıklama', M.lineDescription(line, p.dil, comp)]].filter(([, v]) => v);
     return `
       <div class="insp-head"><div class="insp-icon ${status[0]}">${esc((line.kod || '?').slice(0, 4))}</div><div><div class="insp-title">${esc(line.kod)} · ${esc(line.ad)}</div><div class="insp-sub">${esc(no)} · ${esc(status[1])}</div></div></div>
       ${photo ? `<img class="insp-photo" src="${esc(photo)}" alt="${esc(line.kod)}" data-insp="photo" title="Büyüt">` : ''}
@@ -653,7 +653,9 @@ const BomxPanels = (() => {
         ${field('ilKod', 'Stok kodu', line.kod)}
         ${field('ilAd', 'Tanım', line.ad)}
         ${field('ilUreticiKodu', 'Model kodu', line.ureticiKodu)}
-        ${field('ilAciklama', 'Açıklama', line.aciklama, { multiline: true, rows: 3 })}`
+        ${field('ilAciklama', 'Açıklama', line.aciklama, { multiline: true, rows: 3 })}
+        ${field('ilAciklamaEn', 'Açıklama (EN)', line.aciklamaEn, { multiline: true, rows: 2 })}
+        ${field('ilAciklamaDe', 'Açıklama (DE)', line.aciklamaDe, { multiline: true, rows: 2 })}`
         : `<div class="insp-section">Ürün bilgisi <span class="muted" style="font-weight:400">kütüphaneden</span></div><dl class="kv">${info.map(([k, v]) => `<dt>${esc(k)}</dt><dd>${esc(v)}</dd>`).join('')}</dl>`}
       <div class="insp-section">Kütüphane</div>
       ${comp ? `
@@ -726,7 +728,7 @@ const BomxPanels = (() => {
   function bindInspector() {
     const box = U.$('inspector');
     const metaMap = { ipSeri: 'seriNo', ipMusteri: 'musteri', ipModel: 'model', ipBaslik: 'baslik', ipDurum: 'durum', ipFirma: 'firma', ipTarih: 'tarih', ipHaz: 'hazirlayan', ipKon: 'kontrol', ipOnay: 'onay', ipNotlar: 'notlar' };
-    const lineMap = { ilBirim: 'birim', ilKod: 'kod', ilAd: 'ad', ilUreticiKodu: 'ureticiKodu', ilAciklama: 'aciklama' };
+    const lineMap = { ilBirim: 'birim', ilKod: 'kod', ilAd: 'ad', ilUreticiKodu: 'ureticiKodu', ilAciklama: 'aciklama', ilAciklamaEn: 'aciklamaEn', ilAciklamaDe: 'aciklamaDe' };
     box.addEventListener('input', (e) => {
       if (e.target.matches('input, textarea')) e.target.dataset.dirty = '1';
     });
@@ -796,7 +798,7 @@ const BomxPanels = (() => {
         // Alan yalnız serbest kalemde vardır; kütüphaneden gelen kalemde ürün bilgisi burada değişmez
         if (lineMap[t.id] && !line.komponentId) {
           const key = lineMap[t.id];
-          const value = key === 'aciklama' ? t.value.trim() : M.clean(t.value);
+          const value = key.startsWith('aciklama') ? t.value.trim() : M.clean(t.value);
           if (key === 'kod' && !value) {
             U.toast('Stok kodu boş olamaz', 'error');
             renderInspector();

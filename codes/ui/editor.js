@@ -62,7 +62,7 @@ const BomxEditor = (() => {
 
   function lineMatches(line, tokens) {
     if (!tokens.length) return true;
-    const text = M.fold([line.kod, line.ad, line.ureticiKodu, M.lineDescription(line, E.project.dil), line.kategori, line.uretici].join(' '));
+    const text = M.fold([line.kod, line.ad, line.ureticiKodu, M.lineDescription(line, E.project.dil, line.komponentId ? lib().get(line.komponentId) : null), line.kategori, line.uretici].join(' '));
     return tokens.every((t) => text.includes(t));
   }
 
@@ -843,8 +843,12 @@ const BomxEditor = (() => {
           return `<div class="${cls}"><input class="bt-in num qty${bad ? ' bad' : ''}" data-f="miktar" value="${esc(cellValue(line))}" spellcheck="false" autocomplete="off" inputmode="decimal">${unit}</div>`;
         }
         default: {
-          const value = c.key === 'aciklama' ? M.lineDescription(line, E.project.dil) : line[c.key] || '';
-          return `<div class="${cls} bt-sub bt-text" title="${esc(value)}"><span>${U.highlight(String(value).replace(/\n+/g, ' · '), E.filter)}</span></div>`;
+          const lang = E.project.dil;
+          const value = c.key === 'aciklama' ? M.lineDescription(line, lang, comp) : line[c.key] || '';
+          // Çevirisi olmayan açıklama Türkçe yazar; belgeden önce görülsün
+          const tr = c.key === 'aciklama' && !M.hasTranslation(line, lang, comp)
+            ? `<b class="bt-tr" title="${lang === 'en' ? 'İngilizce' : 'Almanca'} açıklama yok, Türkçesi yazar. Kütüphanede Açıklama (${lang.toUpperCase()}) alanını doldurun.">TR</b>` : '';
+          return `<div class="${cls} bt-sub bt-text" title="${esc(value)}">${tr}<span>${U.highlight(String(value).replace(/\n+/g, ' · '), E.filter)}</span></div>`;
         }
       }
     });
