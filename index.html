@@ -4,7 +4,24 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>BOMX · Malzeme Listesi</title>
-  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%23d40000'/%3E%3Cpath d='M8 9h16M8 16h16M8 23h10' stroke='white' stroke-width='3' stroke-linecap='round'/%3E%3C/svg%3E">
+  <meta name="theme-color" content="#14161b">
+  <meta name="apple-mobile-web-app-title" content="BOMX">
+  <meta name="mobile-web-app-capable" content="yes">
+  <link rel="icon" href="assets/simge/simge.svg" type="image/svg+xml">
+  <link rel="icon" href="assets/simge/simge-192.png" type="image/png" sizes="192x192">
+  <link rel="apple-touch-icon" href="assets/simge/apple-touch-icon.png">
+  <script>
+    // PWA: yalnız web adresinden (GitHub Pages ya da yerel sunucu) açılınca. Dosyadan (file://) açılış eskisi gibi kalır.
+    if (location.protocol === 'https:' || location.hostname === 'localhost' || location.hostname === '127.0.0.1') {
+      const manifest = document.createElement('link');
+      manifest.rel = 'manifest';
+      manifest.href = 'manifest.webmanifest';
+      document.head.appendChild(manifest);
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => navigator.serviceWorker.register('sw.js', { scope: './' }).catch(() => {}));
+      }
+    }
+  </script>
   <link rel="stylesheet" href="codes/bomx.css">
   <link rel="stylesheet" href="codes/print.css">
 </head>

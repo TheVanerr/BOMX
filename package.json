@@ -4,7 +4,7 @@
   "private": true,
   "description": "BOMX: malzeme listesi (BOM) programı, veritabanı özel GitHub deposu (bomx-veri). Başlatmak için index.html dosyasını açın.",
   "scripts": {
-    "test": "node --test test/db.test.js test/model.test.js test/store.test.js test/xlsx.test.js test/reports.test.js test/photos.test.js test/pages.test.js",
+    "test": "node --test test/db.test.js test/model.test.js test/store.test.js test/xlsx.test.js test/reports.test.js test/photos.test.js test/pages.test.js test/pwa.test.js",
     "assets": "node tools/build-assets.js"
   }
 }

@@ -1,0 +1,41 @@
+# BOMX GitHub Pages'te yayınlanır (PWA): yalnız programın çalışması için gereken dosyalar sitede durur.
+# Veri sitede yoktur; özel bomx-veri deposundadır, her cihazda erişim anahtarıyla bağlanılır.
+# Bir kez: Settings → Pages → Build and deployment → Source: "GitHub Actions".
+name: BOMX (GitHub Pages)
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v7
+      - name: Site klasörü
+        run: |
+          mkdir _site
+          cp index.html manifest.webmanifest sw.js _site/
+          cp -r codes ortak _site/
+          mkdir _site/assets
+          cp -r assets/logos assets/simge _site/assets/
+          touch _site/.nojekyll
+      - uses: actions/configure-pages@v6
+      - uses: actions/upload-pages-artifact@v5
+        with:
+          path: _site
+      - id: deployment
+        uses: actions/deploy-pages@v5

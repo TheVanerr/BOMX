@@ -4,7 +4,12 @@ Malzeme listesi (BOM) programı: genel komponent kütüphanesi, projeler, bölü
 
 ## Başlatma
 
-`index.html` dosyasını **Chrome veya Edge** ile açın (çift tık). Sunucu, Node ya da kurulacak paket yoktur.
+İki yol var, ikisi de aynı veritabanını kullanır:
+
+- **Web'den (PWA):** `https://thevanerr.github.io/BOMX/` adresini Chrome veya Edge ile açın. Adres çubuğundaki **Yükle** simgesiyle (telefonda menü → **Ana ekrana ekle**) BOMX uygulama olarak kurulur: kendi penceresi, kırmızı **B** simgesi. Program dosyaları cihazda saklanır, bağlantı yokken de açılır. İnternet varken her açılışta son sürüm gelir. Veriler sitede değil, özel `bomx-veri` deposundadır; her cihazda bir kez depo ve anahtarla bağlanılır.
+- **Dosyadan:** `index.html` dosyasını **Chrome veya Edge** ile açın (çift tık). Sunucu, Node ya da kurulacak paket yoktur.
+
+Site, `main` dalına her gönderimde GitHub Actions ile yayınlanır (`.github/workflows/pages.yml`). Bir kez: depo **Settings → Pages → Build and deployment → Source: GitHub Actions**. Sitede yalnız programın dosyaları durur (`index.html`, `manifest.webmanifest`, `sw.js`, `codes/`, `ortak/`, `assets/logos`, `assets/simge`); test, araç ve şirket verisi sitede yoktur. Uygulama kimliği (`manifest.webmanifest` → `id: bomx-malzeme-listesi`) BOMX'e özeldir: aynı adresteki başka programlarla (P&PX…) çakışmaz. Önbellek (`bomx-program-…`), tarayıcı veritabanı (`bomx-veri`) ve ayarlar (`bomx_…`) da BOMX adıyla ayrı durur.
 
 İlk açılışta ekrandaki üç adımı izleyin (yaklaşık 3 dakika):
 
@@ -138,6 +143,8 @@ P&PX bu tarayıcıda değilse P&PX projesindeki `P-IDX/ML/kayitlar/kodlar.json` 
 | Yol | İçerik |
 |---|---|
 | `index.html` | Program: kurulum, ana ekran, düzenleyici |
+| `manifest.webmanifest`, `sw.js` | PWA: uygulama bildirimi (kimlik `bomx-malzeme-listesi`) ve hizmet çalışanı (program dosyaları cihazda, bağlantısız açılış) |
+| `.github/workflows/pages.yml` | GitHub Pages yayını (`main`e her gönderimde) |
 | `ortak/` | Veritabanı (`bomx-db.js`), GitHub bağlantısı (`bomx-github.js`), açılış (`bomx-boot.js`); P&PX ortak katmanından türetildi |
 | `codes/model.js` | İş kuralları: adet özeti, kontrol, birleştirme, CSV (tarayıcıya bağlı değil) |
 | `codes/store.js` | Depodaki dosya düzeni |
@@ -145,7 +152,7 @@ P&PX bu tarayıcıda değilse P&PX projesindeki `P-IDX/ML/kayitlar/kodlar.json` 
 | `codes/reports.js` | HTML raporlarından ve ERP ürün ağacından komponent ve fotoğraf çıkarma, elektrik sınıflandırması (tarayıcıya bağlı değil) |
 | `codes/ui/` | Ekranlar; `grid.js` kütüphane ve içe aktarma önizlemesindeki düzenlenebilir tablo |
 | `codes/pdf/` | P&PX'in vektörel PDF motoru, gömülü yazı tipi ve logolar |
-| `assets/` | Logolar, yazı tipleri (Selawik, SIL Open Font License) |
+| `assets/` | Logolar, yazı tipleri (Selawik, SIL Open Font License), uygulama simgesi (`assets/simge/`) |
 | `tools/build-assets.js` | `codes/pdf/fonts.js` ve `logos.js` dosyalarını üretir |
 | `tools/rapor-aktar.js` | Raporlardan ve ürün ağaçlarından fotoğraflı komponent paketi üretir |
 | `BOMX elektrik komponentleri.json` | Hazır komponent paketi: raporlardaki elektrikli parçalar, redüktörler ve elektrikli kompleler, fotoğraflarıyla (şirket verisi; Kütüphane → İçe aktar → Dosyadan) |

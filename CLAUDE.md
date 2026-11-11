@@ -4,6 +4,8 @@ Malzeme listesi (BOM) programı: fotoğraflı komponent kütüphanesi, projeler,
 
 Uygulama saf HTML'dir: sunucu, derleme, paket kurulumu yoktur; `index.html` dosyadan çift tıkla açılır. Bu yüzden ES modül (`import`/`export`) ve dış kaynaktan betik kullanılmaz, `fetch` ile yerel dosya okunmaz. Betikler `index.html`'deki sırayla klasik `<script>` olarak yüklenir ve global nesne verir (`BomxModel`, `BomxStore`, `BomxApp`…).
 
+Aynı program GitHub Pages'te PWA olarak da yayınlanır (`.github/workflows/pages.yml`, `main`'e her gönderimde; depo açıktır, veri `bomx-veri`'de özel kalır). Manifest ve hizmet çalışanı yalnız https / localhost'ta eklenir, dosyadan açılış etkilenmez. `sw.js` önce ağdan alır, yoksa saklananı verir; `FILES` listesi sayfanın yüklediği her dosyayı içermeli (yeni betik, stil, görsel ya da `loadScript` eklenince oraya ve iş akışının kopyaladığı klasörlere ekle: `test/pwa.test.js` denetler). Aynı adreste (`thevanerr.github.io`) başka programlar da durur: manifest `id` BOMX'e özeldir, önbellek adı `bomx-program-` ile başlar ve yalnız o adlar silinir, depolama anahtarları `bomx` ile başlar. Simgeler `assets/simge/` (kaynak `simge.svg`, `simge-maskeli.svg`; PNG'ler bunlardan üretildi).
+
 ## Veri
 
 Veritabanı `bomx-veri` adlı özel GitHub deposudur; kayıt önce tarayıcının IndexedDB'sine (`bomx-veri`) yazılır, `ortak/bomx-db.js` dakikada bir tek commit olarak gönderir. Depo düzeni README'de. İki cihazın aynı dosyadaki değişiklikleri `BomxModel.mergeFile` ile kayıt kayıt birleşir (her kayıtta `zaman`, silinenler `silinen` altında); bu yüzden:
