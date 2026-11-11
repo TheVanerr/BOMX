@@ -1,4 +1,4 @@
-/* BOMX iş kuralları: komponent kütüphanesi, proje, malzeme listesi kalemleri, toplamlar, kontroller,
+/* BOMX iş kuralları: komponent kütüphanesi, proje, malzeme listesi kalemleri, adet özetleri, kontroller,
    revizyon farkı, iki cihaz arasında kayıt kayıt birleştirme, CSV ve yapıştırarak ekleme.
    Tarayıcıya bağlı değildir; Node testleri aynı kodu çalıştırır.
 
@@ -25,16 +25,6 @@
   const SHARD_CHARS = '0123456789abcdef';
   const TOMBSTONE_MS = 180 * 24 * 3600 * 1000;
 
-  const CURRENCIES = {
-    TRY: { symbol: '₺', name: 'Türk Lirası' },
-    EUR: { symbol: '€', name: 'Euro' },
-    USD: { symbol: '$', name: 'ABD Doları' },
-    GBP: { symbol: '£', name: 'İngiliz Sterlini' },
-    CHF: { symbol: 'CHF', name: 'İsviçre Frangı' },
-    JPY: { symbol: '¥', name: 'Japon Yeni' },
-    CNY: { symbol: 'CN¥', name: 'Çin Yuanı' }
-  };
-
   const STATUSES = [
     { id: 'taslak', label: 'Taslak', en: 'Draft', de: 'Entwurf', tone: 'gray' },
     { id: 'inceleme', label: 'İncelemede', en: 'In review', de: 'In Prüfung', tone: 'amber' },
@@ -57,36 +47,32 @@
     kategoriler: ['Elektrik', 'Otomasyon', 'Pnömatik', 'Hidrolik', 'Mekanik', 'Pompa', 'Vana', 'Sensör', 'Motor',
       'Kablo', 'Bağlantı Elemanı', 'Sarf Malzeme', 'Hizmet'],
     birimler: ['Adet', 'Takım', 'Set', 'm', 'm²', 'm³', 'kg', 'L', 'Paket', 'Rulo', 'Saat'],
-    paraBirimleri: ['TRY', 'EUR', 'USD'],
-    kurlar: { EUR: null, USD: null },
-    kurTarihi: '',
-    raporParaBirimi: 'TRY',
-    varsayilanParaBirimi: 'TRY',
     varsayilanBirim: 'Adet',
     kisiler: { hazirlayan: 'Fatih GÜRAL', kontrol: 'Furkan BIÇAK', onay: 'Furkan BIÇAK' },
     varsayilanBolumler: ['Genel'],
     firma: 'DOLFIN'
   };
   const SETTINGS_KEYS = Object.keys(DEFAULT_SETTINGS);
+  const DOC_LANGS = [['tr', 'TR', 'Türkçe'], ['en', 'EN', 'English'], ['de', 'DE', 'Deutsch']];
   const BRAND_IDS = ['DOLFIN', 'VICO', 'ENVA', 'KSYSTEM'];
 
-  const META_KEYS = ['seriNo', 'musteri', 'model', 'baslik', 'durum', 'firma', 'dil', 'paraBirimi', 'kurlar', 'kurTarihi',
+  const META_KEYS = ['seriNo', 'musteri', 'model', 'baslik', 'durum', 'firma', 'dil',
     'rev', 'tarih', 'hazirlayan', 'kontrol', 'onay', 'notlar', 'cikti'];
 
   /** Komponent alanları: kütüphane formu, CSV ve sütun eşleştirme aynı listeyi kullanır */
   const COMPONENT_FIELDS = [
-    { key: 'kod', label: 'Kod', required: true },
-    { key: 'ad', label: 'Ad', required: true },
+    { key: 'kod', label: 'Stok Kodu', required: true },
+    { key: 'ad', label: 'Tanım', required: true },
     { key: 'kategori', label: 'Kategori' },
     { key: 'uretici', label: 'Üretici / Marka' },
-    { key: 'ureticiKodu', label: 'Üretici Kodu' },
+    { key: 'ureticiKodu', label: 'Model Kodu' },
     { key: 'tedarikci', label: 'Tedarikçi' },
     { key: 'tedarikciKodu', label: 'Tedarikçi Kodu' },
     { key: 'birim', label: 'Birim' },
-    { key: 'fiyat', label: 'Birim Fiyat', number: true },
-    { key: 'paraBirimi', label: 'Para Birimi' },
     { key: 'teslimSuresi', label: 'Teslim Süresi (gün)', number: true },
     { key: 'aciklama', label: 'Açıklama / Teknik Özellik' },
+    { key: 'aciklamaEn', label: 'Açıklama (EN)' },
+    { key: 'aciklamaDe', label: 'Açıklama (DE)' },
     { key: 'link', label: 'Bağlantı (katalog, ürün sayfası)' },
     { key: 'favori', label: 'Favori', flag: true },
     { key: 'pasif', label: 'Pasif (kullanımdan kalktı)', flag: true }
@@ -100,15 +86,15 @@
       'bilesen adi', 'bilesen', 'komponent', 'komponent adi', 'tanim', 'tanimi', 'name', 'item name', 'item', 'stock name', 'part', 'part name', 'bezeichnung', 'benennung', 'teil'],
     kategori: ['kategori', 'grup', 'grubu', 'malzeme grubu', 'sinif', 'sinifi', 'tur', 'turu', 'category', 'group', 'type', 'kategorie', 'gruppe'],
     uretici: ['uretici', 'marka', 'imalatci', 'manufacturer', 'brand', 'make', 'hersteller', 'marke'],
-    ureticiKodu: ['uretici kodu', 'uretici parca no', 'uretici parca kodu', 'parca no', 'parca numarasi', 'model', 'model no', 'tip', 'tipi', 'mpn', 'manufacturer part number', 'manufacturer code', 'mfr part', 'mfr no', 'typ', 'herstellernummer'],
+    ureticiKodu: ['model kodu', 'tam model kodu', 'uretici kodu', 'uretici parca no', 'uretici parca kodu', 'parca no', 'parca numarasi', 'model', 'model no', 'tip', 'tipi', 'mpn', 'manufacturer part number', 'manufacturer code', 'mfr part', 'mfr no', 'typ', 'herstellernummer'],
     tedarikci: ['tedarikci', 'satici', 'saglayici', 'tedarik', 'supplier', 'vendor', 'lieferant'],
     tedarikciKodu: ['tedarikci kodu', 'satici kodu', 'tedarikci parca no', 'supplier code', 'vendor code', 'supplier part number', 'lieferantennummer'],
     birim: ['birim', 'olcu birimi', 'unit', 'uom', 'einheit', 'me'],
-    fiyat: ['fiyat', 'birim fiyat', 'birim fiyati', 'liste fiyati', 'alis fiyati', 'maliyet', 'price', 'unit price', 'cost', 'preis', 'einzelpreis'],
-    paraBirimi: ['para birimi', 'doviz', 'doviz cinsi', 'doviz turu', 'pb', 'currency', 'cur', 'wahrung'],
     teslimSuresi: ['teslim', 'teslim suresi', 'termin', 'termin suresi', 'lead time', 'leadtime', 'lieferzeit'],
     aciklama: ['aciklama', 'urun tam adi', 'tam ad', 'tam adi', 'teknik aciklama', 'not', 'notlar', 'teknik ozellik', 'teknik ozellikler', 'ozellik', 'ozellikler', 'detay',
       'full product name', 'full name', 'notes', 'note', 'description', 'spec', 'specification', 'beschreibung', 'bemerkung', 'vollstandiger produktname'],
+    aciklamaEn: ['aciklama en', 'aciklama ingilizce', 'ingilizce aciklama', 'description en', 'english description'],
+    aciklamaDe: ['aciklama de', 'aciklama almanca', 'almanca aciklama', 'description de', 'german description', 'beschreibung de'],
     link: ['link', 'url', 'baglanti', 'web', 'datasheet', 'katalog', 'dokuman', 'veri sayfasi'],
     favori: ['favori', 'favorite', 'yildiz'],
     pasif: ['pasif', 'inactive', 'obsolete', 'iptal']
@@ -119,38 +105,32 @@
     tr: {
       title: 'MALZEME LİSTESİ', subtitle: 'Bill of Materials (BOM)', project: 'Proje No', customer: 'Müşteri', model: 'Model',
       desc: 'Açıklama', rev: 'Rev.', date: 'Tarih', prepared: 'Hazırlayan', checked: 'Kontrol', approved: 'Onay', status: 'Durum',
-      no: 'Sıra', code: 'Kod', name: 'Malzeme Adı', category: 'Kategori', maker: 'Üretici', makerCode: 'Üretici Kodu',
-      supplier: 'Tedarikçi', supplierCode: 'Tedarikçi Kodu', ref: 'Referans', qty: 'Miktar', unit: 'Birim', price: 'Birim Fiyat',
-      currency: 'Para Br.', discount: 'İsk. %', amount: 'Tutar', note: 'Not', section: 'Bölüm', subtotal: 'Ara toplam',
-      total: 'Genel toplam', items: 'kalem', page: 'Sayfa', continued: '(devam)', revisions: 'Revizyonlar', purchase: 'SATIN ALMA LİSTESİ',
-      summary: 'ÖZET', rates: 'Kurlar', noSupplier: 'Tedarikçi belirtilmemiş', firstIssue: 'İlk yayın', convertedTotal: 'Toplam',
-      byCategory: 'Kategoriye göre', missingPrice: 'fiyatı girilmemiş kalem', ratesNote: 'Dövizli tutarlar şu kurlarla çevrildi',
-      generated: 'BOMX ile oluşturuldu', notes: 'Notlar', sections: 'bölüm', count: 'Kalem', share: 'Pay', scope: 'Kapsam',
-      uncategorized: 'Kategorisiz'
+      photo: 'Fotoğraf', code: 'Stok Kodu', name: 'Tanım', category: 'Kategori', maker: 'Üretici', makerCode: 'Model Kodu',
+      supplier: 'Tedarikçi', supplierCode: 'Tedarikçi Kodu', ref: 'Referans', qty: 'Adet', unit: 'Birim', note: 'Not', section: 'Bölüm',
+      total: 'Toplam', items: 'kalem', page: 'Sayfa', continued: '(devam)', revisions: 'Revizyonlar', purchase: 'SATIN ALMA LİSTESİ',
+      summary: 'ÖZET', noSupplier: 'Tedarikçi belirtilmemiş', firstIssue: 'İlk yayın', byCategory: 'Kategoriye göre',
+      generated: 'BOMX ile oluşturuldu', notes: 'Notlar', sections: 'bölüm', count: 'Kalem', scope: 'Kapsam',
+      uncategorized: 'Kategorisiz', docType: 'Belge Türü', docTypeValue: 'Malzeme Listesi (BOM)', pages: 'Sayfa Sayısı'
     },
     en: {
       title: 'BILL OF MATERIALS', subtitle: 'BOM', project: 'Project No', customer: 'Customer', model: 'Model',
       desc: 'Description', rev: 'Rev.', date: 'Date', prepared: 'Prepared by', checked: 'Checked by', approved: 'Approved by', status: 'Status',
-      no: 'Item', code: 'Code', name: 'Description', category: 'Category', maker: 'Manufacturer', makerCode: 'Mfr. Part No',
-      supplier: 'Supplier', supplierCode: 'Supplier Code', ref: 'Reference', qty: 'Qty', unit: 'Unit', price: 'Unit Price',
-      currency: 'Curr.', discount: 'Disc. %', amount: 'Amount', note: 'Note', section: 'Section', subtotal: 'Subtotal',
-      total: 'Grand total', items: 'items', page: 'Page', continued: '(continued)', revisions: 'Revisions', purchase: 'PURCHASE LIST',
-      summary: 'SUMMARY', rates: 'Exchange rates', noSupplier: 'No supplier', firstIssue: 'First issue', convertedTotal: 'Total',
-      byCategory: 'By category', missingPrice: 'items without price', ratesNote: 'Foreign currency amounts converted at',
-      generated: 'Generated with BOMX', notes: 'Notes', sections: 'sections', count: 'Items', share: 'Share', scope: 'Scope',
-      uncategorized: 'Uncategorized'
+      photo: 'Photo', code: 'Stock Code', name: 'Definition', category: 'Category', maker: 'Manufacturer', makerCode: 'Model Code',
+      supplier: 'Supplier', supplierCode: 'Supplier Code', ref: 'Reference', qty: 'Qty', unit: 'Unit', note: 'Note', section: 'Section',
+      total: 'Total', items: 'items', page: 'Page', continued: '(continued)', revisions: 'Revisions', purchase: 'PURCHASE LIST',
+      summary: 'SUMMARY', noSupplier: 'No supplier', firstIssue: 'First issue', byCategory: 'By category',
+      generated: 'Generated with BOMX', notes: 'Notes', sections: 'sections', count: 'Items', scope: 'Scope',
+      uncategorized: 'Uncategorized', docType: 'Document Type', docTypeValue: 'Bill of Materials (BOM)', pages: 'Pages'
     },
     de: {
       title: 'STÜCKLISTE', subtitle: 'Bill of Materials (BOM)', project: 'Projekt-Nr.', customer: 'Kunde', model: 'Modell',
       desc: 'Beschreibung', rev: 'Rev.', date: 'Datum', prepared: 'Erstellt', checked: 'Geprüft', approved: 'Freigegeben', status: 'Status',
-      no: 'Pos.', code: 'Code', name: 'Benennung', category: 'Kategorie', maker: 'Hersteller', makerCode: 'Hersteller-Nr.',
-      supplier: 'Lieferant', supplierCode: 'Lieferanten-Nr.', ref: 'Referenz', qty: 'Menge', unit: 'Einheit', price: 'Einzelpreis',
-      currency: 'Währ.', discount: 'Rab. %', amount: 'Betrag', note: 'Bemerkung', section: 'Abschnitt', subtotal: 'Zwischensumme',
-      total: 'Gesamtsumme', items: 'Positionen', page: 'Seite', continued: '(Fortsetzung)', revisions: 'Revisionen', purchase: 'BESTELLLISTE',
-      summary: 'ZUSAMMENFASSUNG', rates: 'Wechselkurse', noSupplier: 'Kein Lieferant', firstIssue: 'Erstausgabe', convertedTotal: 'Summe',
-      byCategory: 'Nach Kategorie', missingPrice: 'Positionen ohne Preis', ratesNote: 'Fremdwährungen umgerechnet zu',
-      generated: 'Erstellt mit BOMX', notes: 'Bemerkungen', sections: 'Abschnitte', count: 'Pos.', share: 'Anteil', scope: 'Umfang',
-      uncategorized: 'Ohne Kategorie'
+      photo: 'Foto', code: 'Lagernummer', name: 'Benennung', category: 'Kategorie', maker: 'Hersteller', makerCode: 'Modellcode',
+      supplier: 'Lieferant', supplierCode: 'Lieferanten-Nr.', ref: 'Referenz', qty: 'Menge', unit: 'Einheit', note: 'Bemerkung', section: 'Abschnitt',
+      total: 'Summe', items: 'Positionen', page: 'Seite', continued: '(Fortsetzung)', revisions: 'Revisionen', purchase: 'BESTELLLISTE',
+      summary: 'ZUSAMMENFASSUNG', noSupplier: 'Kein Lieferant', firstIssue: 'Erstausgabe', byCategory: 'Nach Kategorie',
+      generated: 'Erstellt mit BOMX', notes: 'Bemerkungen', sections: 'Abschnitte', count: 'Pos.', scope: 'Umfang',
+      uncategorized: 'Ohne Kategorie', docType: 'Dokumentart', docTypeValue: 'Stückliste (BOM)', pages: 'Seiten'
     }
   };
   const UNIT_TEXT = {
@@ -183,11 +163,6 @@
   /* ─── Metin ───────────────────────────────────────────── */
 
   const clean = (v) => String(v == null ? '' : v).replace(/\s+/g, ' ').trim();
-  /** Para birimi üç harfli koddur (TL → TRY); başka bir şey TRY sayılır, sayfaya ham metin girmez */
-  const currencyCode = (v, fallback) => {
-    const c = clean(v).toUpperCase().replace(/^TL$/, 'TRY');
-    return /^[A-Z]{3}$/.test(c) ? c : fallback || 'TRY';
-  };
   const cleanMultiline = (v) => String(v == null ? '' : v).replace(/\r\n?/g, '\n').replace(/[ \t]+\n/g, '\n').trim();
 
   /** Aramada büyük/küçük harf ve Türkçe işaretler fark etmez: "Şalter" = "salter", "IŞIK" = "isik" */
@@ -223,7 +198,7 @@
     if (value === null || value === undefined || value === '') return null;
     if (typeof value === 'number') return Number.isFinite(value) ? value : null;
     let s = String(value).trim().replace(/[\s  ']/g, '');
-    // Para birimi ve yüzde işareti olabilir; başka harf varsa sayı değildir ("YOK1" kod, sayı değil)
+    // Birim ya da yüzde işareti olabilir; başka harf varsa sayı değildir ("YOK1" kod, sayı değil)
     s = s.replace(/^(TL|TRY|EUR|USD|GBP|CHF)|(TL|TRY|EUR|USD|GBP|CHF)$/i, '').replace(/[₺€$£%]/g, '');
     if (!/^[-+]?\(?[\d.,]+\)?$/.test(s)) return null;
     const negative = /^-|^\(.*\)$/.test(s);
@@ -265,19 +240,6 @@
 
   const isNum = (n) => typeof n === 'number' && Number.isFinite(n);
   const formatQty = (n) => (isNum(n) ? numberFormat(0, 3).format(n) : '');
-  const formatPrice = (n) => (isNum(n) ? numberFormat(2, 4).format(n) : '');
-  const formatAmount = (n) => (isNum(n) ? numberFormat(2, 2).format(n) : '');
-
-  function currencySymbol(code) {
-    return (CURRENCIES[code] && CURRENCIES[code].symbol) || code || '';
-  }
-
-  /** Ekranda "1.234,50 ₺"; options.code ile "1.234,50 TRY" (PDF yazı tipinde ₺ yoktur) */
-  function formatMoney(n, currency, options) {
-    if (!isNum(n)) return '';
-    const unit = options && options.code ? currency : currencySymbol(currency);
-    return `${formatAmount(n)} ${unit}`.trim();
-  }
 
   /** CSV için: binlik ayırıcı yok, ondalık virgül (Türkçe Excel doğrudan sayı okur) */
   function csvNumber(n, digits) {
@@ -319,25 +281,10 @@
 
   /* ─── Ayarlar ─────────────────────────────────────────── */
 
-  function normalizeRates(raw, currencies) {
-    const src = plainObject(raw);
-    const out = {};
-    const list = currencies || Object.keys(src);
-    for (const code of list) {
-      const c = clean(code).toUpperCase();
-      if (!/^[A-Z]{3}$/.test(c) || c === 'TRY') continue;
-      const n = parseNumber(src[c]);
-      out[c] = n > 0 ? n : null;
-    }
-    return out;
-  }
-
   function normalizeSettings(raw) {
     const s = plainObject(raw);
     const D = DEFAULT_SETTINGS;
     const list = (v, d) => (Array.isArray(v) ? [...new Set(v.map(clean).filter(Boolean))] : d.slice());
-    const currencies = list(s.paraBirimleri, D.paraBirimleri).map((c) => c.toUpperCase()).filter((c) => /^[A-Z]{3}$/.test(c));
-    if (!currencies.includes('TRY')) currencies.unshift('TRY');
     const people = Object.assign({}, D.kisiler, plainObject(s.kisiler));
     const sections = list(s.varsayilanBolumler, D.varsayilanBolumler);
     const pick = (v, allowed, d) => (allowed.includes(v) ? v : d);
@@ -346,11 +293,6 @@
       surum: SCHEMA,
       kategoriler: list(s.kategoriler, D.kategoriler),
       birimler: list(s.birimler, D.birimler),
-      paraBirimleri: [...new Set(currencies)],
-      kurlar: normalizeRates(s.kurlar, currencies),
-      kurTarihi: clean(s.kurTarihi),
-      raporParaBirimi: pick(clean(s.raporParaBirimi).toUpperCase(), currencies, 'TRY'),
-      varsayilanParaBirimi: pick(clean(s.varsayilanParaBirimi).toUpperCase(), currencies, 'TRY'),
       varsayilanBirim: clean(s.varsayilanBirim) || D.varsayilanBirim,
       kisiler: { hazirlayan: clean(people.hazirlayan), kontrol: clean(people.kontrol), onay: clean(people.onay) },
       varsayilanBolumler: sections.length ? sections : D.varsayilanBolumler.slice(),
@@ -451,7 +393,6 @@
 
   function normalizeComponent(input) {
     const c = plainObject(input);
-    const price = parseNumber(c.fiyat);
     const lead = parseNumber(c.teslimSuresi);
     const flag = (v) => v === true || /^(1|evet|e|x|true|yes|ja|var)$/i.test(clean(v));
     return {
@@ -464,10 +405,10 @@
       tedarikci: clean(c.tedarikci),
       tedarikciKodu: clean(c.tedarikciKodu),
       birim: clean(c.birim) || 'Adet',
-      fiyat: price === null || price < 0 ? null : price,
-      paraBirimi: currencyCode(c.paraBirimi),
       teslimSuresi: lead === null || lead < 0 ? null : Math.round(lead),
       aciklama: cleanMultiline(c.aciklama),
+      aciklamaEn: cleanMultiline(c.aciklamaEn),
+      aciklamaDe: cleanMultiline(c.aciklamaDe),
       link: clean(c.link),
       favori: flag(c.favori),
       pasif: flag(c.pasif),
@@ -479,15 +420,14 @@
   /** @returns hata yazıları; boşsa kayıt geçerli */
   function validateComponent(c, library) {
     const errors = [];
-    if (!c.kod) errors.push('Kod gerekli');
-    if (!c.ad) errors.push('Ad gerekli');
+    if (!c.kod) errors.push('Stok kodu gerekli');
+    if (!c.ad) errors.push('Tanım gerekli');
     if (c.kod && library) {
       const key = codeKey(c.kod);
       const other = [...library].find((x) => x.id !== c.id && codeKey(x.kod) === key);
       if (other) errors.push(`"${other.kod}" kodu kütüphanede zaten var (${other.ad})`);
     }
     if (c.link && !/^https?:\/\//i.test(c.link)) errors.push('Bağlantı http:// ya da https:// ile başlamalı');
-    if (c.paraBirimi && !/^[A-Z]{3}$/.test(c.paraBirimi)) errors.push('Para birimi üç harfli olmalı (TRY, EUR, USD)');
     return errors;
   }
 
@@ -736,13 +676,11 @@
     const o = plainObject(raw);
     const flag = (v, d) => (typeof v === 'boolean' ? v : d);
     return {
-      fiyat: flag(o.fiyat, true),
-      araToplam: flag(o.araToplam, true),
+      kapak: flag(o.kapak, true),
       satinAlma: flag(o.satinAlma, false),
       ozet: flag(o.ozet, true),
       revizyonlar: flag(o.revizyonlar, true),
-      notlar: flag(o.notlar, true),
-      sutunlar: Array.isArray(o.sutunlar) ? o.sutunlar.filter((k) => typeof k === 'string') : null
+      notlar: flag(o.notlar, true)
     };
   }
 
@@ -754,8 +692,6 @@
   function normalizeLine(l) {
     const x = plainObject(l);
     const qty = parseNumber(x.miktar);
-    const price = parseNumber(x.fiyat);
-    const discount = parseNumber(x.iskonto);
     return {
       id: clean(x.id) || uid(),
       bolum: clean(x.bolum),
@@ -768,9 +704,9 @@
       tedarikci: clean(x.tedarikci),
       birim: clean(x.birim) || 'Adet',
       miktar: qty === null ? 0 : qty,
-      fiyat: price === null || price < 0 ? null : price,
-      paraBirimi: currencyCode(x.paraBirimi),
-      iskonto: discount === null ? 0 : Math.min(100, Math.max(0, discount)),
+      aciklama: cleanMultiline(x.aciklama),
+      aciklamaEn: cleanMultiline(x.aciklamaEn),
+      aciklamaDe: cleanMultiline(x.aciklamaDe),
       referans: clean(x.referans),
       not: cleanMultiline(x.not),
       zaman: x.zaman || ''
@@ -819,9 +755,6 @@
       durum: STATUS_IDS.includes(p.durum) ? p.durum : 'taslak',
       firma: BRAND_IDS.includes(clean(p.firma).toUpperCase()) ? clean(p.firma).toUpperCase() : 'DOLFIN',
       dil: ['tr', 'en', 'de'].includes(p.dil) ? p.dil : 'tr',
-      paraBirimi: /^[A-Z]{3}$/.test(clean(p.paraBirimi).toUpperCase()) ? clean(p.paraBirimi).toUpperCase() : 'TRY',
-      kurlar: normalizeRates(p.kurlar),
-      kurTarihi: clean(p.kurTarihi),
       rev: normalizeRev(p.rev),
       tarih: validDate(p.tarih) || today(),
       hazirlayan: clean(p.hazirlayan),
@@ -850,7 +783,7 @@
     return out;
   }
 
-  /** Yeni proje: Rev. 00 ilk yayın, tarihi bugün; kişiler ve kurlar ayarlardan */
+  /** Yeni proje: Rev. 00 ilk yayın, tarihi bugün; kişiler ayarlardan */
   function createProject(input, settings) {
     const s = normalizeSettings(settings);
     const x = plainObject(input);
@@ -868,9 +801,6 @@
       durum: 'taslak',
       firma: x.firma || s.firma,
       dil: x.dil || 'tr',
-      paraBirimi: x.paraBirimi || s.raporParaBirimi,
-      kurlar: Object.assign({}, s.kurlar),
-      kurTarihi: s.kurTarihi,
       rev: '00',
       tarih: today(),
       hazirlayan: x.hazirlayan !== undefined ? x.hazirlayan : s.kisiler.hazirlayan,
@@ -888,12 +818,35 @@
 
   /* ─── Kalemler ────────────────────────────────────────── */
 
-  const SNAPSHOT_FIELDS = ['kod', 'ad', 'kategori', 'uretici', 'ureticiKodu', 'tedarikci', 'birim', 'fiyat', 'paraBirimi'];
+  const SNAPSHOT_FIELDS = ['kod', 'ad', 'kategori', 'uretici', 'ureticiKodu', 'tedarikci', 'birim', 'aciklama', 'aciklamaEn', 'aciklamaDe'];
+
+  // Kütüphane açıklamasındaki iç notlar malzeme listesine girmez: kullanıldığı makineler, kompleler, kaynak ve doğrulama notları
+  const INTERNAL_NOTE = /^(Kullanım|Komple|Kaynak \(web\)|Not|İlgili kod|Alternatif):/i;
+
+  /** Komponent açıklamasının listede ve belgede görünen kısmı (teknik özellik) */
+  function bomDescription(text) {
+    return cleanMultiline(text).split('\n').map((l) => l.trim()).filter((l) => l && !INTERNAL_NOTE.test(l)).join('\n');
+  }
+
+  const snapshotValue = (component, key) => (key.startsWith('aciklama') ? bomDescription(component[key]) : component[key]);
+
+  /** PDF yazı tipinde (Selawik) olmayan işaretlerin karşılığı: belgede boşluk kalmasın */
+  const docSafe = (text) => String(text == null ? '' : text).replace(/\u2212/g, '-').replace(/\u2264/g, '<=').replace(/\u03a9/g, 'ohm');
+
+  /** İlk revizyonun varsayılan açıklaması belgenin diliyle yazılır; elle yazılan açıklamaya dokunulmaz */
+  function revisionNote(rev, T) {
+    return rev.rev === '00' && (!rev.aciklama || rev.aciklama === DOC_TEXT.tr.firstIssue) ? T.firstIssue : rev.aciklama;
+  }
+
+  /** Kalemin istenen dildeki açıklaması; o dilde yoksa Türkçesi */
+  function lineDescription(line, lang) {
+    return (lang === 'en' && line.aciklamaEn) || (lang === 'de' && line.aciklamaDe) || line.aciklama || '';
+  }
 
   function lineFromComponent(component, qty, sectionId) {
     const c = normalizeComponent(component);
     const line = normalizeLine({ id: uid(), bolum: sectionId, komponentId: c.id, miktar: qty === undefined ? 1 : qty });
-    for (const key of SNAPSHOT_FIELDS) line[key] = c[key];
+    for (const key of SNAPSHOT_FIELDS) line[key] = snapshotValue(c, key);
     return line;
   }
 
@@ -901,89 +854,36 @@
     return normalizeLine(Object.assign({ birim: 'Adet', miktar: 1 }, plainObject(fields), { id: uid(), bolum: sectionId, komponentId: null }));
   }
 
-  /** Kalemin kütüphanedeki hâlden farklı alanları (fiyat, ad...) */
+  /** Kalemin kütüphanedeki hâlden farklı alanları (tanım, model kodu...) */
   function libraryDiff(line, component) {
     if (!component) return [];
-    const out = [];
-    for (const key of SNAPSHOT_FIELDS) {
-      const a = line[key];
-      const b = component[key];
-      if (key === 'fiyat') {
-        if ((a === null) !== (b === null) || (a !== null && b !== null && round(a, 6) !== round(b, 6))) out.push(key);
-      } else if (clean(a) !== clean(b)) {
-        out.push(key);
-      }
-    }
-    return out;
+    return SNAPSHOT_FIELDS.filter((key) => clean(line[key]) !== clean(snapshotValue(component, key)));
   }
 
   function refreshFromLibrary(line, component, fields) {
     const next = Object.assign({}, line);
-    for (const key of fields || SNAPSHOT_FIELDS) next[key] = component[key];
+    for (const key of fields || SNAPSHOT_FIELDS) next[key] = snapshotValue(component, key);
     next.komponentId = component.id;
     return next;
   }
 
-  function lineAmount(line) {
-    if (!isNum(line.fiyat)) return null;
-    const qty = Number(line.miktar) || 0;
-    return qty * line.fiyat * (1 - (Number(line.iskonto) || 0) / 100);
-  }
-
-  function rateOf(currency, rates) {
-    if (currency === 'TRY') return 1;
-    const r = rates && rates[currency];
-    return isNum(r) && r > 0 ? r : null;
-  }
-
-  /** Kurlar TL karşılığıdır: 1 EUR = rates.EUR TRY */
-  function convert(amount, from, to, rates) {
-    if (!isNum(amount)) return null;
-    if (from === to) return amount;
-    const a = rateOf(from, rates);
-    const b = rateOf(to, rates);
-    return a && b ? (amount * a) / b : null;
-  }
-
   const isPieceUnit = (unit) => ['adet', 'ad', 'pcs', 'pc', 'stk'].includes(fold(unit).replace(/\.$/, ''));
 
-  /** Kalem listesinin toplamı: para birimi başına ve rapor para birimine çevrilmiş */
-  function summarize(lines, currency, rates) {
-    const byCurrency = {};
+  /** Adet sütunundaki yazı: "adet" dışındaki birim (m, kg, takım…) miktarın yanında yazar */
+  function qtyText(line, lang) {
+    const n = formatQty(line.miktar);
+    return isPieceUnit(line.birim) ? n : `${n} ${unitText(line.birim, lang)}`;
+  }
+
+  /** Kalem listesinin özeti: kalem sayısı ve "adet" birimindeki toplam */
+  function summarize(lines) {
     let pieces = 0;
-    let missingPrice = 0;
-    let converted = 0;
-    const missingRates = new Set();
-    for (const line of lines) {
-      if (isPieceUnit(line.birim)) pieces += Number(line.miktar) || 0;
-      const amount = lineAmount(line);
-      if (amount === null) {
-        missingPrice += 1;
-        continue;
-      }
-      byCurrency[line.paraBirimi] = (byCurrency[line.paraBirimi] || 0) + amount;
-      const value = convert(amount, line.paraBirimi, currency, rates);
-      if (value === null) {
-        if (!rateOf(line.paraBirimi, rates)) missingRates.add(line.paraBirimi);
-        if (!rateOf(currency, rates)) missingRates.add(currency);
-      } else {
-        converted += value;
-      }
-    }
-    return {
-      count: lines.length,
-      pieces,
-      byCurrency,
-      missingPrice,
-      currency,
-      converted: missingRates.size ? null : converted,
-      partial: converted,
-      missingRates: [...missingRates]
-    };
+    for (const line of lines) if (isPieceUnit(line.birim)) pieces += Number(line.miktar) || 0;
+    return { count: lines.length, pieces };
   }
 
   function projectTotals(project) {
-    return summarize(project.kalemler, project.paraBirimi, project.kurlar);
+    return summarize(project.kalemler);
   }
 
   function sectionLines(project, sectionId) {
@@ -1016,12 +916,12 @@
       if (!groups.has(key)) groups.set(key, []);
       groups.get(key).push(line);
     }
-    const rows = [...groups.entries()].map(([kategori, lines]) => Object.assign({ kategori }, summarize(lines, project.paraBirimi, project.kurlar)));
-    rows.sort((a, b) => (b.partial || 0) - (a.partial || 0) || compareText(a.kategori, b.kategori));
+    const rows = [...groups.entries()].map(([kategori, lines]) => Object.assign({ kategori }, summarize(lines)));
+    rows.sort((a, b) => b.count - a.count || compareText(a.kategori, b.kategori));
     return rows;
   }
 
-  /** Bir komponentin aynı fiyatlı kalemleri tek satırda toplanır; tedarikçiye göre gruplanır */
+  /** Satın alma listesinde bir komponentin kalemleri tek satırda toplanır; tedarikçiye göre gruplanır */
   function bomKey(line) {
     return line.komponentId ? `k:${line.komponentId}` : `c:${codeKey(line.kod)}|${fold(line.ad)}`;
   }
@@ -1035,7 +935,7 @@
     const sectionName = new Map(project.bolumler.map((s) => [s.id, s.ad]));
     const items = new Map();
     for (const line of project.kalemler) {
-      const key = `${bomKey(line)}|${line.birim}|${line.paraBirimi}|${line.fiyat}|${line.iskonto}|${line.tedarikci}`;
+      const key = `${bomKey(line)}|${line.birim}|${line.tedarikci}`;
       if (!items.has(key)) {
         items.set(key, Object.assign({}, line, { miktar: 0, refs: [], bolumler: [], numaralar: [] }));
       }
@@ -1049,7 +949,6 @@
     const groups = new Map();
     for (const item of items.values()) {
       item.referans = item.refs.join(', ');
-      item.tutar = lineAmount(item);
       const supplier = item.tedarikci || '';
       if (!groups.has(supplier)) groups.set(supplier, []);
       groups.get(supplier).push(item);
@@ -1057,8 +956,7 @@
     return [...groups.entries()]
       .map(([tedarikci, list]) => ({
         tedarikci,
-        items: list.sort((a, b) => compareText(a.kod, b.kod)),
-        totals: summarize(list, project.paraBirimi, project.kurlar)
+        items: list.sort((a, b) => compareText(a.kod, b.kod))
       }))
       .sort((a, b) => (!a.tedarikci ? 1 : !b.tedarikci ? -1 : compareText(a.tedarikci, b.tedarikci)));
   }
@@ -1078,8 +976,8 @@
   /* ─── Kontrol ─────────────────────────────────────────── */
 
   const FIELD_LABELS = {
-    kod: 'kod', ad: 'ad', kategori: 'kategori', uretici: 'üretici', ureticiKodu: 'üretici kodu', tedarikci: 'tedarikçi',
-    birim: 'birim', fiyat: 'fiyat', paraBirimi: 'para birimi'
+    kod: 'stok kodu', ad: 'tanım', kategori: 'kategori', uretici: 'üretici', ureticiKodu: 'model kodu', tedarikci: 'tedarikçi',
+    birim: 'birim', aciklama: 'açıklama', aciklamaEn: 'açıklama (EN)', aciklamaDe: 'açıklama (DE)'
   };
 
   function listCodes(lines, max) {
@@ -1109,15 +1007,7 @@
     }
 
     const zero = project.kalemler.filter((l) => !(Number(l.miktar) > 0));
-    if (zero.length) push('error', `Miktarı girilmemiş kalem: ${listCodes(zero)}`, zero, { kind: 'removeZero' });
-
-    const noPrice = project.kalemler.filter((l) => !isNum(l.fiyat));
-    if (noPrice.length) push('warn', `Fiyatı girilmemiş ${noPrice.length} kalem: ${listCodes(noPrice)}`, noPrice);
-
-    const totals = projectTotals(project);
-    for (const cur of totals.missingRates) {
-      push('error', `${cur} kuru girilmemiş: ${project.paraBirimi} toplamı hesaplanamıyor. Kurları sağ panelde (proje bilgileri) girin.`);
-    }
+    if (zero.length) push('error', `Adedi girilmemiş kalem: ${listCodes(zero)}`, zero, { kind: 'removeZero' });
 
     const deleted = [];
     const relink = [];
@@ -1155,7 +1045,7 @@
     // Aynı bölümde aynı komponent iki satırda: birleştirilebilir
     const seen = new Map();
     for (const line of project.kalemler) {
-      const key = `${line.bolum}|${bomKey(line)}|${line.fiyat}|${line.paraBirimi}|${line.birim}`;
+      const key = `${line.bolum}|${bomKey(line)}|${line.birim}`;
       if (!seen.has(key)) seen.set(key, []);
       seen.get(key).push(line);
     }
@@ -1171,7 +1061,7 @@
       const refs = splitRefs(l.referans);
       return refs.length > 1 && isPieceUnit(l.birim) && refs.length !== Number(l.miktar);
     });
-    if (refMismatch.length) push('info', `Referans sayısı miktarla uyuşmuyor: ${listCodes(refMismatch)}`, refMismatch);
+    if (refMismatch.length) push('info', `Referans sayısı adetle uyuşmuyor: ${listCodes(refMismatch)}`, refMismatch);
 
     for (const section of project.bolumler) {
       if (project.bolumler.length > 1 && !project.kalemler.some((l) => l.bolum === section.id)) push('info', `"${section.ad}" bölümü boş`);
@@ -1187,18 +1077,13 @@
     const map = new Map();
     for (const line of lines) {
       const key = bomKey(line);
-      if (!map.has(key)) map.set(key, { key, kod: line.kod, ad: line.ad, birim: line.birim, miktar: 0, fiyat: line.fiyat, paraBirimi: line.paraBirimi, tutar: 0 });
-      const a = map.get(key);
-      a.miktar += Number(line.miktar) || 0;
-      const amount = lineAmount(line);
-      a.tutar = amount === null || a.tutar === null ? null : a.tutar + amount;
-      a.fiyat = line.fiyat;
-      a.paraBirimi = line.paraBirimi;
+      if (!map.has(key)) map.set(key, { key, kod: line.kod, ad: line.ad, birim: line.birim, miktar: 0 });
+      map.get(key).miktar += Number(line.miktar) || 0;
     }
     return map;
   }
 
-  /** Komponent bazında fark: eklenen, çıkarılan, miktarı ya da fiyatı değişen */
+  /** Komponent bazında fark: eklenen, çıkarılan, adedi değişen */
   function diffBoms(oldLines, newLines) {
     const before = aggregate(oldLines || []);
     const after = aggregate(newLines || []);
@@ -1212,9 +1097,7 @@
         added.push(b);
         continue;
       }
-      const qty = round(a.miktar, 6) !== round(b.miktar, 6);
-      const price = a.fiyat !== b.fiyat || a.paraBirimi !== b.paraBirimi;
-      if (qty || price) changed.push({ key, kod: b.kod, ad: b.ad, birim: b.birim, eski: a, yeni: b, qty, price });
+      if (round(a.miktar, 6) !== round(b.miktar, 6)) changed.push({ key, kod: b.kod, ad: b.ad, birim: b.birim, eski: a, yeni: b });
       else same += 1;
     }
     for (const [key, a] of before) if (!after.has(key)) removed.push(a);
@@ -1625,7 +1508,7 @@
       const changes = [];
       for (const f of COMPONENT_FIELDS) {
         if (f.key === 'kod' || !(f.key in fields)) continue;
-        // "Güncelle" kipinde boş hücre atlanır: boş birim "Adet", boş para birimi "TRY", boş favori "hayır" olmaz
+        // "Güncelle" kipinde boş hücre atlanır: boş birim "Adet", boş favori "hayır" olmaz
         if (mode === 'merge' && blank(fields[f.key])) continue;
         const incoming = normalizeComponent(Object.assign({}, existing, { [f.key]: fields[f.key] }))[f.key];
         if (!sameValue(existing[f.key], incoming)) {
@@ -1651,14 +1534,13 @@
     return plan;
   }
 
-  const LIBRARY_CSV_HEADERS = ['Kod', 'Ad', 'Kategori', 'Üretici', 'Üretici Kodu', 'Tedarikçi', 'Tedarikçi Kodu', 'Birim', 'Birim Fiyat',
-    'Para Birimi', 'Teslim Süresi', 'Açıklama', 'Bağlantı', 'Favori', 'Pasif'];
+  const LIBRARY_CSV_HEADERS = ['Stok Kodu', 'Tanım', 'Kategori', 'Üretici', 'Model Kodu', 'Tedarikçi', 'Tedarikçi Kodu', 'Birim', 'Teslim Süresi', 'Açıklama', 'Açıklama (EN)', 'Açıklama (DE)', 'Bağlantı', 'Favori', 'Pasif'];
 
   function libraryToRows(list) {
     const rows = [LIBRARY_CSV_HEADERS];
     for (const c of list.slice().sort(compareComponents)) {
       rows.push([c.kod, c.ad, c.kategori, c.uretici, c.ureticiKodu, c.tedarikci, c.tedarikciKodu, c.birim,
-        csvNumber(c.fiyat), c.paraBirimi, c.teslimSuresi === null ? '' : c.teslimSuresi, c.aciklama, c.link,
+        c.teslimSuresi === null ? '' : c.teslimSuresi, c.aciklama, c.aciklamaEn, c.aciklamaDe, c.link,
         c.favori ? 'evet' : '', c.pasif ? 'evet' : '']);
     }
     return rows;
@@ -1748,24 +1630,15 @@
 
   /* ─── Proje satırları (CSV ve belge) ──────────────────── */
 
-  /** Belgedeki sütunlar; ekranda ve PDF'te aynı anahtarlar */
+  /** Malzeme listesinin sütunları; ekranda, PDF'te ve Excel'de aynı */
   const COLUMNS = [
-    { key: 'no', label: 'Sıra', doc: 'no', always: true },
-    { key: 'kod', label: 'Kod', doc: 'code', always: true },
-    { key: 'ad', label: 'Ad', doc: 'name', always: true },
-    { key: 'kategori', label: 'Kategori', doc: 'category' },
-    { key: 'uretici', label: 'Üretici', doc: 'maker' },
-    { key: 'ureticiKodu', label: 'Üretici Kodu', doc: 'makerCode' },
-    { key: 'tedarikci', label: 'Tedarikçi', doc: 'supplier' },
-    { key: 'referans', label: 'Referans', doc: 'ref' },
-    { key: 'miktar', label: 'Miktar', doc: 'qty', always: true },
-    { key: 'birim', label: 'Birim', doc: 'unit', always: true },
-    { key: 'fiyat', label: 'Birim Fiyat', doc: 'price', price: true },
-    { key: 'iskonto', label: 'İskonto %', doc: 'discount', price: true },
-    { key: 'tutar', label: 'Tutar', doc: 'amount', price: true },
-    { key: 'not', label: 'Not', doc: 'note' }
+    { key: 'foto', label: 'Fotoğraf', doc: 'photo' },
+    { key: 'kod', label: 'Stok Kodu', doc: 'code' },
+    { key: 'ad', label: 'Tanım', doc: 'name' },
+    { key: 'ureticiKodu', label: 'Model Kodu', doc: 'makerCode' },
+    { key: 'miktar', label: 'Adet', doc: 'qty' },
+    { key: 'aciklama', label: 'Açıklama', doc: 'desc' }
   ];
-  const DEFAULT_COLUMNS = ['no', 'kod', 'ad', 'uretici', 'ureticiKodu', 'referans', 'miktar', 'birim', 'fiyat', 'tutar', 'not'];
 
   function docText(lang) {
     return DOC_TEXT[lang] || DOC_TEXT.tr;
@@ -1784,22 +1657,21 @@
 
   function projectToCsvRows(project, lang) {
     const T = docText(lang);
-    const rows = [[T.section, T.no, T.code, T.name, T.category, T.maker, T.makerCode, T.supplier, T.ref, T.qty, T.unit, T.price, T.currency, T.discount, T.amount, T.note]];
-    for (const { line, section, no } of numberedLines(project)) {
-      rows.push([section.ad, no, line.kod, line.ad, line.kategori, line.uretici, line.ureticiKodu, line.tedarikci, line.referans,
-        csvNumber(line.miktar, 3), unitText(line.birim, lang), csvNumber(line.fiyat), line.paraBirimi, line.iskonto ? csvNumber(line.iskonto, 2) : '',
-        csvNumber(lineAmount(line), 2), line.not]);
+    const rows = [[T.section, T.code, T.name, T.makerCode, T.qty, T.desc]];
+    for (const { line, section } of numberedLines(project)) {
+      const qty = isPieceUnit(line.birim) ? csvNumber(line.miktar, 3) : `${csvNumber(line.miktar, 3)} ${unitText(line.birim, lang)}`;
+      rows.push([section.ad, line.kod, line.ad, line.ureticiKodu, qty, lineDescription(line, lang).replace(/\n+/g, ' ')]);
     }
     return rows;
   }
 
   function purchaseToCsvRows(project, lang) {
     const T = docText(lang);
-    const rows = [[T.supplier, T.code, T.name, T.maker, T.makerCode, T.qty, T.unit, T.price, T.currency, T.amount, T.ref]];
+    const rows = [[T.supplier, T.code, T.name, T.maker, T.makerCode, T.qty, T.unit, T.ref]];
     for (const group of purchaseList(project)) {
       for (const item of group.items) {
         rows.push([group.tedarikci || T.noSupplier, item.kod, item.ad, item.uretici, item.ureticiKodu, csvNumber(item.miktar, 3),
-          unitText(item.birim, lang), csvNumber(item.fiyat), item.paraBirimi, csvNumber(item.tutar, 2), item.referans]);
+          unitText(item.birim, lang), item.referans]);
       }
     }
     return rows;
@@ -1808,7 +1680,6 @@
   return {
     SCHEMA,
     PATHS,
-    CURRENCIES,
     STATUSES,
     SERIES_CATEGORIES,
     DEFAULT_SETTINGS,
@@ -1817,8 +1688,8 @@
     HEADER_ALIASES,
     DOC_TEXT,
     COLUMNS,
-    DEFAULT_COLUMNS,
     BRAND_IDS,
+    DOC_LANGS,
     SNAPSHOT_FIELDS,
     setClock,
     nowIso,
@@ -1834,10 +1705,6 @@
     round,
     isNum,
     formatQty,
-    formatPrice,
-    formatAmount,
-    formatMoney,
-    currencySymbol,
     csvNumber,
     encodeJson,
     decodeJson,
@@ -1887,11 +1754,13 @@
     createProject,
     lineFromComponent,
     freeLine,
+    bomDescription,
+    lineDescription,
+    docSafe,
+    revisionNote,
+    qtyText,
     libraryDiff,
     refreshFromLibrary,
-    lineAmount,
-    rateOf,
-    convert,
     isPieceUnit,
     summarize,
     projectTotals,

@@ -40,7 +40,7 @@ test("JS'in eriştiği her öğe sayfada ya da bir şablonda tanımlıdır", () 
   for (const m of sources.matchAll(/\b(?:field|select)\('([A-Za-z][\w-]*)'/g)) defined.add(m[1]);
   defined.add('busyRoot');
   // Komponent formu alan adlarıyla kurulur: ld/mf + alan anahtarı
-  const composed = /^(ld|mf)(kod|ad|kategori|uretici|ureticiKodu|tedarikci|tedarikciKodu|birim|fiyat|paraBirimi|teslimSuresi|aciklama|link|favori|pasif|error)$/;
+  const composed = /^(ld|mf)(kod|ad|kategori|uretici|ureticiKodu|tedarikci|tedarikciKodu|birim|teslimSuresi|aciklama|aciklamaEn|aciklamaDe|link|favori|pasif|error)$/;
   const missing = [];
   for (const m of sources.matchAll(/(?:U\.\$|getElementById)\('([A-Za-z][\w-]*)'\)/g)) {
     if (!defined.has(m[1]) && !composed.test(m[1])) missing.push(m[1]);

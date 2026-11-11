@@ -1,6 +1,6 @@
 # BOMX
 
-Malzeme listesi (BOM) programı: komponent kütüphanesi, projeler, bölümlü malzeme listesi, revizyon, PDF / Excel / CSV. Tanıtım ve kullanım: [README.md](README.md). Arayüz ve veri katmanı P&PX'ten (BOMX'in yanındaki `../P&PX/`, yalnız başvuru) örnek alındı.
+Malzeme listesi (BOM) programı: fotoğraflı komponent kütüphanesi, projeler, bölümlü malzeme listesi, revizyon, PDF / Excel / CSV. Programda fiyat, para birimi ve kur yoktur; eski dosyalardaki bu alanlar `normalize*` ile düşer. Tanıtım ve kullanım: [README.md](README.md). Arayüz ve veri katmanı P&PX'ten (BOMX'in yanındaki `../P&PX/`, yalnız başvuru) örnek alındı.
 
 Uygulama saf HTML'dir: sunucu, derleme, paket kurulumu yoktur; `index.html` dosyadan çift tıkla açılır. Bu yüzden ES modül (`import`/`export`) ve dış kaynaktan betik kullanılmaz, `fetch` ile yerel dosya okunmaz. Betikler `index.html`'deki sırayla klasik `<script>` olarak yüklenir ve global nesne verir (`BomxModel`, `BomxStore`, `BomxApp`…).
 
@@ -8,6 +8,7 @@ Uygulama saf HTML'dir: sunucu, derleme, paket kurulumu yoktur; `index.html` dosy
 
 Veritabanı `bomx-veri` adlı özel GitHub deposudur; kayıt önce tarayıcının IndexedDB'sine (`bomx-veri`) yazılır, `ortak/bomx-db.js` dakikada bir tek commit olarak gönderir. Depo düzeni README'de. İki cihazın aynı dosyadaki değişiklikleri `BomxModel.mergeFile` ile kayıt kayıt birleşir (her kayıtta `zaman`, silinenler `silinen` altında); bu yüzden:
 
+- Malzeme listesinin sütunları sabittir (`BomxModel.COLUMNS`: fotoğraf, stok kodu `kod`, tanım `ad`, model kodu `ureticiKodu`, adet `miktar`, açıklama). Kütüphaneden gelen kalemde yalnız adet (ve bölüm) değişir; serbest kalemin alanları sağ panelden yazılır. Kalem açıklaması `bomDescription` ile gelir: `Kullanım:`, `Komple:`, `Not:`, `Kaynak (web):` satırları iç bilgidir, listeye ve belgeye girmez.
 - Projeye yapılan her değişiklik `BomxEditor.mutate/commit` üzerinden geçer; commit önce `normalizeProject` uygular, sonra `stampChanges` değişen kayda zaman yazar (zaman, kaydın görülmüş en yeni zamanından sonra olur: `laterStamp`). Proje dosyasını doğrudan yazan kod da `stampChanges(önceki, sonraki)` çağırmalıdır.
 - `BomxStore.saveProject` ve `saveSettings` yazmadan önce veritabanındaki hâlle birleştirir ve yazılanı döndürür; düzenleyici dönen hâli `absorb` ile ekrana alır. Bu sırayı bozma: bellekteki hâl doğrudan dosyanın üstüne yazılırsa eşitlemenin getirdiği değişiklik kaybolur.
 - Eşitleme bildirimi (`status.changed`) yalnız o eşitlemenin son bildiriminde doludur ve hata durumunda da gelir; sekmeler arası yazma bildirimi `localStorage` (`bomx_sekme`) olayıyla gider. İkisi de `codes/app.js` içindeki `handleRemote`'a gider.
@@ -19,13 +20,14 @@ Veritabanı `bomx-veri` adlı özel GitHub deposudur; kayıt önce tarayıcını
 
 ## Dosyalar
 
-- `codes/model.js` iş kuralları (toplam, kur çevirme, kontrol, satın alma, revizyon farkı, birleştirme, CSV, yapıştırma); tarayıcıya bağlı değildir.
-- `codes/store.js` depodaki dosya düzeni. `codes/xlsx.js` Excel yazma/okuma (zip yazıcı P&PX'ten).
+- `codes/model.js` iş kuralları (adet özeti, kontrol, satın alma, revizyon farkı, birleştirme, CSV, yapıştırma); tarayıcıya bağlı değildir.
+- `codes/store.js` depodaki dosya düzeni. `codes/xlsx.js` Excel yazma/okuma (zip yazıcı P&PX'ten; fotoğraflar `xl/drawings` parçasıyla hücreye gömülür, yalnız JPEG ve PNG).
 - `codes/reports.js` HTML raporlarından (ürün ağacı `DATA.groups/subs/flat/full`, kritik parça `DATA[grup][]`, sarf listesi `P.data.kalemler`) ve ERP ürün ağacı tablosundan (`readTreeTable`: Excel / CSV, Seviye ve Tip sütunlu) komponent çıkarır: betikteki JSON değişmezleri metin olarak okunur, sayfa kodu çalıştırılmaz; rapor değilse `<table>` satırları. Fotoğraflar (`IMGS` gibi yol → data URL nesneleri, kritik listede `Fotoğraf`, sarfta `foto_b64`) `collect` içinde kayda geçer; eksik olana `assignPhotos` tek üst kompleden ya da aileden (`familyShape`) verir. `\b` Türkçe harfte çalışmaz: ham metindeki düzenli ifadede `(?<![\p{L}\p{N}])` kullan (kurallar `fold` edilmiş ASCII metinde çalışır). Elektrik sınıflandırması iki katmanlıdır: `headOf` Türkçe tamlamanın asıl sözcüğünü bulur (iyelik ekli son sözcük; eksiz ERP adında baştaki tür; `-li` niteler), `TYPE_RULES` kategoriyi verir (aynı yerde eşleşen kurallarda sıra kazanır); içinde elektrikli parça olan komple adı ne olursa olsun elektriklidir. kural değişince `test/reports.test.js`, `test/photos.test.js` ve (elde varsa) gerçek raporlarla `node tools/rapor-aktar.js --csv <klasör>` sonucunu karşılaştır. Tarayıcıya bağlı değildir.
 - `codes/ui/` ekranlar: `editor.js` (liste, geri al, sürükle-bırak), `panels.js` (sol seçici, sağ panel, alt panel), `library.js` (kütüphane tablosu, içe aktarma önizlemesi), `grid.js` (düzenlenebilir div tablo: tek düzenleyici, yeniden çizimde açık düzenleyici korunur, satırlar `--gt-min` ile aynı genişlikte), `home.js`, `output.js` (PDF sayfaları ve önizleme), `setup.js` (depo ve anahtar adımları).
 - `tools/rapor-aktar.js` raporlardan ve ürün ağaçlarından fotoğraflı paket (`BOMX elektrik komponentleri.json`, `--ek` ile koda göre ek özellik / fotoğraf) üretir; paket, dışa aktarılan paketler ve `aktarim/` şirket verisidir, `.gitignore`'dadır.
 - `codes/pdf/pdf.js` P&PX ile aynı kalmalı (test denetler); `pdf-dom.js` P&PX'inkidir, yalnız Selawik yükler. `codes/pdf/fonts.js` ve `logos.js` elle düzenlenmez: `node tools/build-assets.js`.
-- PDF yazı tipinde (Selawik) ₺, ≈, ✓, ★ yoktur: belgede para birimi kodu (TRY) yazılır, bu işaretler kullanılmaz.
+- PDF yazı tipinde (Selawik) ≈, ✓, ★, −, ≤, Ω yoktur: arayüz metinleri bu işaretleri kullanmaz, komponent verisi `BomxModel.docSafe` ile çevrilir.
+- İçerik dili `project.dil`dir (üst çubuk TR / EN / DE); açıklamalar `aciklama`, `aciklamaEn`, `aciklamaDe` alanlarında durur, `lineDescription` seçer. Standart kapak `output.js` içinde `coverPage` (P&PX `covers.js` "bant" tasarımının A4 yatay hâli); çok dilli PDF her dili kapağıyla tam belge olarak birleştirir.
 
 ## Bittiğinde
 

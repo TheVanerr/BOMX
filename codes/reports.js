@@ -1141,7 +1141,9 @@
       uretici,
       ureticiKodu: part && alnum(part) !== alnum(e.kod) ? part : (e.kodsuz ? part : ''),
       birim: unitOf(e, o.birimler),
-      aciklama: lines.join('\n')
+      aciklama: lines.join('\n'),
+      aciklamaEn: e.tamAd ? e.tamAd.en : '',
+      aciklamaDe: e.tamAd ? e.tamAd.de : ''
     };
   }
 

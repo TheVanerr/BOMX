@@ -356,18 +356,6 @@ const BomxUi = (() => {
     return d.toLocaleDateString('tr-TR');
   }
 
-  /** Para birimi başına toplamlar: "1.234,50 € + 820,00 ₺" */
-  function moneyList(byCurrency, options) {
-    const parts = Object.keys(byCurrency || {}).sort().map((c) => M.formatMoney(byCurrency[c], c, options));
-    return parts.join(' + ');
-  }
-
-  function totalText(totals, options) {
-    if (!totals || !totals.count) return '';
-    if (totals.converted !== null && totals.converted !== undefined) return M.formatMoney(totals.converted, totals.currency, options);
-    return moneyList(totals.byCurrency, options) || '';
-  }
-
   function debounce(fn, ms) {
     let timer = null;
     const run = (...args) => {
@@ -525,8 +513,6 @@ const BomxUi = (() => {
     setPref,
     formatDate,
     relTime,
-    moneyList,
-    totalText,
     debounce,
     isTyping,
     highlight,

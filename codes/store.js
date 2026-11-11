@@ -4,7 +4,7 @@
      BOM/projeler/<proje>/proje.json   proje bilgileri ve malzeme listesi
      BOM/projeler/<proje>/revizyon/<rev>.json  revizyon yükseltilirken listenin o anki hâli (değişmez)
      BOM/sablonlar/<kimlik>.json       hazır setler
-     BOM/ayarlar.json                  kategori, birim, kur ve varsayılanlar
+     BOM/ayarlar.json                  kategori, birim ve varsayılanlar
    db: BomxDb (read, write, remove, list). Tarayıcıya bağlı değildir; Node testleri aynı kodu çalıştırır. */
 
 (function (root, factory) {
@@ -208,7 +208,6 @@
         rev: p.rev,
         tarih: p.tarih,
         firma: p.firma,
-        paraBirimi: p.paraBirimi,
         bolumSayisi: p.bolumler.length,
         kalemSayisi: p.kalemler.length,
         totals: M.projectTotals(p),
@@ -268,8 +267,8 @@
           bolum: ids.get(l.bolum) || project.bolumler[0].id,
           zaman: project.guncelleme
         })));
-        // Kopyada belge ayarları da gelir (notlar, antet, dil, para birimi, PDF seçenekleri); kimlik, durum ve revizyon gelmez
-        for (const key of ['notlar', 'firma', 'dil', 'paraBirimi', 'cikti']) {
+        // Kopyada belge ayarları da gelir (notlar, antet, dil, PDF seçenekleri); kimlik, durum ve revizyon gelmez
+        for (const key of ['notlar', 'firma', 'dil', 'cikti']) {
           if (seed[key] !== undefined && (input || {})[key] === undefined) project[key] = M.clone(seed[key]);
         }
       }

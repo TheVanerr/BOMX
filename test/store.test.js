@@ -51,19 +51,18 @@ test('aynı parçaya üst üste binen kütüphane yazımları birbirini silmez (
 
 test('proje açılır, kaydedilir, listelenir; aynı ad iki kez açılamaz', async () => {
   const { store } = fresh();
-  const settings = M.normalizeSettings({ varsayilanBolumler: ['Elektrik', 'Mekanik'], kurlar: { EUR: 36 } });
+  const settings = M.normalizeSettings({ varsayilanBolumler: ['Elektrik', 'Mekanik'] });
   const p = await store.createProject({ seriNo: '0626051', musteri: 'DÜNYA', model: 'ULT M200 3B' }, settings);
   assert.equal(p.id, '0626051-DÜNYA-ULT M200 3B');
   assert.deepEqual(p.bolumler.map((s) => s.ad), ['Elektrik', 'Mekanik']);
   assert.equal(p.rev, '00');
   assert.equal(p.revizyonlar[0].aciklama, 'İlk yayın');
   assert.equal(p.hazirlayan, 'Fatih GÜRAL');
-  assert.equal(p.kurlar.EUR, 36);
   await assert.rejects(() => store.createProject({ seriNo: '0626051', musteri: 'dünya', model: 'ult m200 3b' }, settings), /zaten var/);
   await assert.rejects(() => store.createProject({ seriNo: '', musteri: 'A', model: 'B' }, settings), /gerekli/);
 
   const next = M.clone(p);
-  next.kalemler.push(M.lineFromComponent({ id: 'c1', kod: 'PE01', ad: 'Pompa', fiyat: 10, paraBirimi: 'EUR' }, 2, p.bolumler[0].id));
+  next.kalemler.push(M.lineFromComponent({ id: 'c1', kod: 'PE01', ad: 'Pompa' }, 2, p.bolumler[0].id));
   M.stampChanges(p, next);
   await store.saveProject(next);
   const read = await store.readProject(p.id);
@@ -71,7 +70,7 @@ test('proje açılır, kaydedilir, listelenir; aynı ad iki kez açılamaz', asy
   const { projects } = await store.listProjects();
   assert.equal(projects.length, 1);
   assert.equal(projects[0].kalemSayisi, 1);
-  assert.equal(projects[0].totals.converted, 720);
+  assert.deepEqual(projects[0].totals, { count: 1, pieces: 2 });
   assert.deepEqual(projects[0].komponentler, ['c1']);
   assert.equal(await store.readProject('yok'), null);
 });
@@ -100,9 +99,9 @@ test('ayar kaydı veritabanındaki hâlle anahtar anahtar birleşir', async () =
   const { store } = fresh();
   const base = await store.readSettings();
   await store.saveSettings(M.setSetting(base, 'birimler', ['Adet', 'Kutu'], '2026-11-10T10:00:00.000Z'));
-  const written = await store.saveSettings(M.setSetting(base, 'kurlar', { EUR: 37 }, '2026-11-10T10:00:01.000Z'));
+  const written = await store.saveSettings(M.setSetting(base, 'kategoriler', ['Pompa'], '2026-11-10T10:00:01.000Z'));
   assert.deepEqual(written.birimler, ['Adet', 'Kutu']);
-  assert.equal(written.kurlar.EUR, 37);
+  assert.deepEqual(written.kategoriler, ['Pompa']);
   assert.deepEqual((await store.readSettings()).birimler, ['Adet', 'Kutu']);
 });
 
@@ -140,7 +139,7 @@ test('proje adı değişince revizyon dosyalarıyla birlikte taşınır', async 
 test('revizyon anlık görüntüsü yazılır, okunur, sıralanır', async () => {
   const { store } = fresh();
   const p = await store.createProject({ seriNo: '1', musteri: 'A', model: 'M' }, {});
-  p.kalemler.push(M.lineFromComponent({ id: 'c1', kod: 'X', ad: 'X', fiyat: 2 }, 3, p.bolumler[0].id));
+  p.kalemler.push(M.lineFromComponent({ id: 'c1', kod: 'X', ad: 'X' }, 3, p.bolumler[0].id));
   await store.saveRevision(p.id, p);
   const r1 = Object.assign(M.clone(p), { rev: '01' });
   r1.kalemler[0].miktar = 5;
@@ -160,10 +159,10 @@ test('şablonlar ve ayarlar kaydedilir, çakışma kopyaları listelenir', async
   await store.deleteTemplate(t.id);
   assert.equal((await store.listTemplates()).templates.length, 0);
 
-  const s = M.setSetting(await store.readSettings(), 'kurlar', { EUR: 37.5, USD: 34 });
+  const s = M.setSetting(await store.readSettings(), 'birimler', ['Adet', 'Metre']);
   await store.saveSettings(s);
-  assert.equal((await store.readSettings()).kurlar.EUR, 37.5);
-  assert.ok((await store.readSettings()).zaman.kurlar);
+  assert.deepEqual((await store.readSettings()).birimler, ['Adet', 'Metre']);
+  assert.ok((await store.readSettings()).zaman.birimler);
 
   await db.write('BOM/projeler/x/proje.json.catisma-20261110-101010', new TextEncoder().encode('{}'));
   assert.deepEqual((await store.listConflicts()).map((c) => c.path), ['BOM/projeler/x/proje.json.catisma-20261110-101010']);

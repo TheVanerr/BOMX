@@ -94,8 +94,7 @@ const BomxHome = (() => {
     const sorters = {
       recent: (a, b) => String(b.guncelleme).localeCompare(String(a.guncelleme)),
       seri: (a, b) => M.compareText(a.seriNo, b.seriNo),
-      musteri: (a, b) => M.compareText(a.musteri, b.musteri) || M.compareText(a.seriNo, b.seriNo),
-      total: (a, b) => (b.totals.partial || 0) - (a.totals.partial || 0)
+      musteri: (a, b) => M.compareText(a.musteri, b.musteri) || M.compareText(a.seriNo, b.seriNo)
     };
     list = list.slice().sort(sorters[H.sort] || sorters.recent);
     return list;
@@ -105,7 +104,7 @@ const BomxHome = (() => {
     const box = U.$('projectGrid');
     const st = app().state;
     U.$('pjStatus').innerHTML = `<option value="">Tüm durumlar</option>${M.STATUSES.map((s) => `<option value="${s.id}"${H.status === s.id ? ' selected' : ''}>${esc(s.label)} (${st.projects.filter((p) => p.durum === s.id).length})</option>`).join('')}`;
-    U.$('pjSort').value = H.sort;
+    U.$('pjSort').value = ['recent', 'seri', 'musteri'].includes(H.sort) ? H.sort : 'recent';
     if (!st.projects.length) {
       box.innerHTML = `<div class="home-empty"><strong>Henüz proje yok</strong>
         Projeyi <b>+ Yeni Proje</b> ile açın (seri no, müşteri, model). Malzeme listesini soldaki komponent kütüphanesinden seçerek kurarsınız.
@@ -120,7 +119,6 @@ const BomxHome = (() => {
     }
     box.innerHTML = list.map((p) => {
       const status = M.STATUSES.find((s) => s.id === p.durum) || M.STATUSES[0];
-      const total = U.totalText(p.totals);
       return `<div class="project-card" role="button" tabindex="0" data-id="${esc(p.id)}">
         <div class="pc-head"><div class="pc-no">${esc(p.seriNo)}</div><button type="button" class="pc-menu" data-menu="${esc(p.id)}" title="İşlemler">⋯</button></div>
         <div class="pc-model">${esc(p.model)}</div>
@@ -131,9 +129,8 @@ const BomxHome = (() => {
           <span class="pc-chip dark">Rev. ${esc(p.rev)}</span>
           <span class="pc-chip${p.kalemSayisi ? ' has' : ''}">${p.kalemSayisi} kalem</span>
           ${p.bolumSayisi > 1 ? `<span class="pc-chip">${p.bolumSayisi} bölüm</span>` : ''}
-          ${p.totals.missingPrice ? `<span class="pc-chip">${p.totals.missingPrice} fiyatsız</span>` : ''}
+          ${p.totals.pieces ? `<span class="pc-chip">${esc(M.formatQty(p.totals.pieces))} adet</span>` : ''}
         </div>
-        <div class="pc-total">${total ? esc(total) : '—'}${p.totals.missingRates.length ? '<small>kur eksik</small>' : ''}</div>
         <div class="pc-meta">${esc(U.formatDate(p.tarih))} · güncelleme ${esc(U.relTime(p.guncelleme))}</div>
       </div>`;
     }).join('');
@@ -298,11 +295,10 @@ const BomxHome = (() => {
     const box = U.$('tpEditor');
     const t = H.templateDraft;
     if (!t) {
-      box.innerHTML = `<div class="empty-state"><strong>Şablonlar (hazır setler)</strong>Sık kullanılan komponent gruplarını şablon yapın (pompa grubu, pano standart malzemeleri, pnömatik set…). Projede tek tıkla bölüme ya da yeni bölüm olarak eklenir; miktarlar ve referanslar gelir, fiyatlar kütüphanedeki güncel hâlinden alınır.<br><br>Şablon, düzenleyicide kalemleri seçip <b>Seçilenlerden şablon</b> ile ya da buradan <b>+ Yeni şablon</b> ile oluşturulur.</div>`;
+      box.innerHTML = `<div class="empty-state"><strong>Şablonlar (hazır setler)</strong>Sık kullanılan komponent gruplarını şablon yapın (pompa grubu, pano standart malzemeleri, pnömatik set…). Projede tek tıkla bölüme ya da yeni bölüm olarak eklenir; adetler gelir, ürün bilgileri kütüphanedeki güncel hâlinden alınır.<br><br>Şablon, düzenleyicide kalemleri seçip <b>Seçilenlerden şablon</b> ile ya da buradan <b>+ Yeni şablon</b> ile oluşturulur.</div>`;
       return;
     }
     const library = app().state.libraryById;
-    const total = M.summarize(M.linesFromTemplate(t, library, 'x'), app().settings.raporParaBirimi, app().settings.kurlar);
     box.innerHTML = `
       <div class="card">
         <div class="card-head"><h2>${t.id && app().state.templates.some((x) => x.id === t.id) ? 'Şablonu düzenle' : 'Yeni şablon'}</h2>
@@ -314,7 +310,7 @@ const BomxHome = (() => {
         <div class="field"><label for="tpDesc">Açıklama</label><input id="tpDesc" class="field-input" value="${esc(t.aciklama)}" placeholder="Hangi makinelerde, ne için"></div></div>
       </div>
       <div class="card">
-        <div class="card-head"><h3>Kalemler (${t.kalemler.length})${total.converted ? ` · ${esc(M.formatMoney(total.converted, total.currency))}` : ''}</h3></div>
+        <div class="card-head"><h3>Kalemler (${t.kalemler.length})</h3></div>
         <div class="suggest-wrap"><input type="search" id="tpAdd" class="search" placeholder="Komponent ekle: kod ya da ad yazın, Enter" autocomplete="off"><div class="suggest hidden" id="tpSuggest"></div></div>
         <div style="overflow:auto;margin-top:10px">
         <table class="mini-table"><thead><tr><th>Kod</th><th>Ad</th><th class="num" style="width:90px">Miktar</th><th>Birim</th><th style="width:160px">Referans</th><th style="width:200px">Not</th><th></th></tr></thead><tbody>
@@ -438,20 +434,7 @@ const BomxHome = (() => {
   function renderSettings() {
     const s = app().settings;
     const lines = (list) => esc(list.join('\n'));
-    const foreign = s.paraBirimleri.filter((c) => c !== 'TRY');
     U.$('settingsBody').innerHTML = `<div class="page-grid">
-      <div class="card">
-        <div class="card-head"><h3>Kurlar (TL karşılığı)</h3><span class="muted">${s.kurTarihi ? `Kur tarihi ${esc(U.formatDate(s.kurTarihi))}` : 'Kur girilmemiş'}</span></div>
-        ${foreign.length ? `<div class="rate-grid">${foreign.map((c) => `<span class="cur">${esc(c)}</span><input class="field-input" data-set-rate="${esc(c)}" value="${esc(M.isNum(s.kurlar[c]) ? M.formatPrice(s.kurlar[c]) : '')}" placeholder="örn. 36,50"><span class="hint">1 ${esc(c)} = ? TRY</span>`).join('')}</div>` : '<p class="field-help">Yalnız TRY kullanılıyor.</p>'}
-        <div class="field-row" style="margin-top:10px"><div class="field"><label for="stKurTarihi">Kur tarihi</label><input type="date" id="stKurTarihi" class="field-input" value="${esc(s.kurTarihi)}"></div>
-        <div class="field"><label for="stRapor">Yeni projelerde toplam para birimi</label><select id="stRapor" class="field-input">${s.paraBirimleri.map((c) => `<option${c === s.raporParaBirimi ? ' selected' : ''}>${esc(c)}</option>`).join('')}</select></div></div>
-        <p class="field-help">Yeni projeler bu kurlarla başlar; proje kurları belgenin değişmemesi için projede saklanır. Açık projeye sağ paneldeki <b>Ayarlardaki kurları al</b> ile aktarılır. Kurlar elle girilir (TCMB ya da bankanızın satış kuru).</p>
-      </div>
-      <div class="card">
-        <div class="card-head"><h3>Para birimleri</h3></div>
-        <div class="field"><label for="stCurrencies">Kullanılan para birimleri (virgülle)</label><input id="stCurrencies" class="field-input" value="${esc(s.paraBirimleri.join(', '))}"><p class="field-help">Üç harfli kod: TRY, EUR, USD, GBP, CHF…</p></div>
-        <div class="field"><label for="stDefCur">Yeni komponentte para birimi</label><select id="stDefCur" class="field-input">${s.paraBirimleri.map((c) => `<option${c === s.varsayilanParaBirimi ? ' selected' : ''}>${esc(c)}</option>`).join('')}</select></div>
-      </div>
       <div class="card">
         <div class="card-head"><h3>Belge kişileri ve antet</h3></div>
         <div class="field-row three">
@@ -479,17 +462,10 @@ const BomxHome = (() => {
     </div>`;
   }
 
-  /** Sayfa yalnız yapısı değişince yeniden kurulur (para birimleri → kur satırları); Tab ile alandan alana geçiş bozulmaz */
   async function saveSetting(patch, message) {
     try {
       await app().updateSettings(patch);
       U.toast(message || 'Ayar kaydedildi');
-      if ('paraBirimleri' in patch) renderSettings();
-      else {
-        const label = U.$('settingsBody').querySelector('.card-head .muted');
-        const s = app().settings;
-        if (label) label.textContent = s.kurTarihi ? `Kur tarihi ${U.formatDate(s.kurTarihi)}` : 'Kur girilmemiş';
-      }
     } catch (e) {
       U.toast(`Ayar kaydedilemedi: ${e.message}`, 'error');
       renderSettings();
@@ -501,23 +477,7 @@ const BomxHome = (() => {
       const t = e.target;
       const s = app().settings;
       const list = (v) => v.split(/\r?\n|,/).map((x) => M.clean(x)).filter(Boolean);
-      if (t.dataset.setRate) {
-        const n = t.value.trim() ? M.parseNumber(t.value) : null;
-        if (t.value.trim() && !(n > 0)) {
-          U.toast('Kur sıfırdan büyük olmalı', 'error');
-          renderSettings();
-          return;
-        }
-        const patch = { kurlar: Object.assign({}, s.kurlar, { [t.dataset.setRate]: n }) };
-        if (!s.kurTarihi || s.kurTarihi !== M.today()) patch.kurTarihi = M.today();
-        saveSetting(patch, `${t.dataset.setRate} kuru kaydedildi`);
-        return;
-      }
       const map = {
-        stKurTarihi: () => ({ kurTarihi: t.value }),
-        stRapor: () => ({ raporParaBirimi: t.value }),
-        stCurrencies: () => ({ paraBirimleri: t.value.split(/[\s,;]+/).map((c) => c.toUpperCase()).filter((c) => /^[A-Z]{3}$/.test(c)) }),
-        stDefCur: () => ({ varsayilanParaBirimi: t.value }),
         stHaz: () => ({ kisiler: Object.assign({}, s.kisiler, { hazirlayan: t.value }) }),
         stKon: () => ({ kisiler: Object.assign({}, s.kisiler, { kontrol: t.value }) }),
         stOnay: () => ({ kisiler: Object.assign({}, s.kisiler, { onay: t.value }) }),
@@ -579,7 +539,7 @@ const BomxHome = (() => {
           <dt><code>BOM/projeler/&lt;proje&gt;/proje.json</code></dt><dd>Proje bilgileri ve malzeme listesi</dd>
           <dt><code>…/revizyon/&lt;rev&gt;.json</code></dt><dd>Revizyon yükseltilirken listenin hâli</dd>
           <dt><code>BOM/sablonlar/*.json</code></dt><dd>Hazır setler</dd>
-          <dt><code>BOM/ayarlar.json</code></dt><dd>Kurlar, kategoriler, birimler, kişiler</dd>
+          <dt><code>BOM/ayarlar.json</code></dt><dd>Kategoriler, birimler, kişiler</dd>
         </dl>
         <p class="field-help">Kayıt önce bu cihaza yazılır, en geç 1 dakikada bir (ve sayfadan çıkarken) tek commit olarak depoya gider. İnternet kesilse de kayıt kaybolmaz.</p>
       </div>

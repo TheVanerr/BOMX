@@ -43,7 +43,6 @@
           <option value="recent">Son değişen</option>
           <option value="seri">Seri no</option>
           <option value="musteri">Müşteri</option>
-          <option value="total">Toplam tutar</option>
         </select>
       </div>
       <div id="projectGrid" class="pj-grid"></div>
@@ -59,7 +58,6 @@
               <option value="last" id="libFilterLast" hidden>Son aktarılanlar</option>
               <option value="aktif">Yalnız aktifler</option>
               <option value="fav">Favoriler</option>
-              <option value="noprice">Fiyatı olmayanlar</option>
               <option value="unused">Hiçbir projede kullanılmayanlar</option>
               <option value="pasif">Pasifler</option>
             </select>
@@ -125,6 +123,7 @@
       <div class="tb-spacer"></div>
       <div class="tb-status"><button type="button" class="db-chip" id="appStatus"></button></div>
       <div class="tb-group">
+        <div class="lang-seg" id="bomLang" role="group" aria-label="İçerik dili" title="Listenin ve belgenin dili: sütun başlıkları ve açıklamalar bu dilde görünür"><button type="button" data-lang="tr">TR</button><button type="button" data-lang="en">EN</button><button type="button" data-lang="de">DE</button></div>
         <button type="button" class="btn btn-sm" id="btnSave" title="Kaydet (Ctrl+S); her değişiklik zaten kendiliğinden kaydedilir">Kaydet</button>
         <button type="button" class="btn btn-sm" id="btnCsv" title="Noktalı virgüllü CSV (Türkçe Excel)">CSV</button>
         <button type="button" class="btn btn-sm" id="btnExcel" title="Biçimli Excel: malzeme listesi, satın alma, özet">Excel</button>
@@ -181,7 +180,6 @@
         <span id="bomCount" class="muted"></span>
         <div class="tb-spacer"></div>
         <button type="button" class="btn btn-xs btn-ghost" id="btnCollapseAll" title="Bütün bölümleri daralt / aç">Daralt / aç</button>
-        <button type="button" class="btn btn-xs btn-ghost" id="btnColumns" title="Görünen sütunlar (tablo başlığına sağ tık da açar)">Sütunlar ▾</button>
       </div>
       <div class="bom-scroll" id="bomScroll"><div class="bt" id="bomTable"></div></div>
     </main>

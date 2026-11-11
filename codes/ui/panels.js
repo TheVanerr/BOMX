@@ -1,7 +1,7 @@
 /* Düzenleyici panelleri.
    Sol: komponent kütüphanesi (arama, kategori, miktar kutusu ile hızlı ekleme), şablonlar, başka projeden alma.
    Sağ: özellikler (proje, kalem, çoklu seçim) ve kontrol. Alt: özet, satın alma, revizyon farkı, referanslar.
-   En alt: bölüm sekmeleri ve toplam. */
+   En alt: bölüm sekmeleri ve adet özeti. */
 
 const BomxPanels = (() => {
   const M = BomxModel;
@@ -55,10 +55,6 @@ const BomxPanels = (() => {
     return list;
   }
 
-  function priceText(c) {
-    return M.isNum(c.fiyat) ? M.formatMoney(c.fiyat, c.paraBirimi) : '';
-  }
-
   function rowHtml(c, i, q) {
     const here = q.here.get(c.id);
     const total = q.all.get(c.id) || 0;
@@ -69,13 +65,13 @@ const BomxPanels = (() => {
       <button type="button" class="star${c.favori ? ' on' : ''}" data-act="fav" title="Favori">★</button>
       ${photo ? `<img class="lp-thumb" src="${esc(photo)}" alt="" loading="lazy" draggable="false">` : ''}
       <div class="lp-main">
-        <div class="lp-top"><span class="lp-kod">${U.highlight(c.kod, L.query)}</span><span class="lp-price">${esc(priceText(c))}</span></div>
+        <div class="lp-top"><span class="lp-kod">${U.highlight(c.kod, L.query)}</span></div>
         <div class="lp-name">${U.highlight(c.ad, L.query)}</div>
         ${sub ? `<div class="lp-sub">${U.highlight(sub, L.query)}</div>` : ''}
       </div>
       <div class="lp-qty">
         <button type="button" data-act="minus" title="Bir azalt">−</button>
-        <input data-act="qty" value="${here ? esc(M.formatQty(here)) : ''}" placeholder="0" inputmode="decimal" title="Bu bölümdeki miktar; yazıp Enter">
+        <input data-act="qty" value="${here ? esc(M.formatQty(here)) : ''}" placeholder="0" inputmode="decimal" title="Bu bölümdeki adet; yazıp Enter">
         <button type="button" class="plus" data-act="plus" title="Bir ekle">+</button>
       </div>
       ${elsewhere > 0 ? `<div class="lp-elsewhere">Diğer bölümlerde ${esc(M.formatQty(elsewhere))} ${esc(c.birim)}</div>` : ''}
@@ -196,9 +192,10 @@ const BomxPanels = (() => {
     const usage = app().usageOf(c.id).filter((p) => p.id !== ed().currentId());
     const rows = [
       ['Kategori', c.kategori],
-      ['Üretici', [c.uretici, c.ureticiKodu].filter(Boolean).join(' · ')],
+      ['Üretici', c.uretici],
+      ['Model kodu', c.ureticiKodu],
       ['Tedarikçi', [c.tedarikci, c.tedarikciKodu].filter(Boolean).join(' · ')],
-      ['Fiyat', M.isNum(c.fiyat) ? `${M.formatMoney(c.fiyat, c.paraBirimi)} / ${c.birim}` : `— / ${c.birim}`],
+      ['Birim', c.birim],
       ['Teslim', c.teslimSuresi !== null ? `${c.teslimSuresi} gün` : ''],
       ['Kullanım', usage.length ? `${usage.length} başka projede` : '']
     ].filter(([, v]) => v);
@@ -425,9 +422,8 @@ const BomxPanels = (() => {
     }
     const library = app().state.libraryById;
     box.innerHTML = templates.map((t) => {
-      const total = M.summarize(M.linesFromTemplate(t, library, 'x'), ed().project ? ed().project.paraBirimi : 'TRY', ed().project ? ed().project.kurlar : {});
       return `<div class="lt-item" data-id="${esc(t.id)}">
-        <h4>${esc(t.ad)} <span>${t.kalemler.length} kalem${total.converted ? ` · ${esc(M.formatMoney(total.converted, total.currency))}` : ''}</span></h4>
+        <h4>${esc(t.ad)} <span>${t.kalemler.length} kalem</span></h4>
         ${t.aciklama ? `<p>${esc(t.aciklama)}</p>` : ''}
         <div class="lt-actions">
           <button type="button" class="btn btn-xs btn-primary" data-act="add">Bölüme ekle</button>
@@ -511,7 +507,7 @@ const BomxPanels = (() => {
         <button type="button" class="btn btn-sm btn-primary" data-act="add">Seçilenleri ekle</button>
         <button type="button" class="btn btn-sm" data-act="sections">Bölümleriyle ekle</button>
       </div>
-      <p class="field-help" style="margin-top:6px">Kalemler kaynak projedeki fiyat ve bilgilerle gelir. Güncel fiyat için Kontrol sekmesindeki “Kütüphaneden güncelle” kullanılır.</p>`;
+      <p class="field-help" style="margin-top:6px">Kalemler kaynak projedeki bilgilerle gelir. Güncel bilgi için Kontrol sekmesindeki “Kütüphaneden güncelle” kullanılır.</p>`;
   }
 
   function bindOtherProjects() {
@@ -574,7 +570,7 @@ const BomxPanels = (() => {
   function captureInspectorFocus() {
     const el = document.activeElement;
     if (!el || !U.$('inspector').contains(el)) return null;
-    const key = el.id || (el.dataset.rev ? `rev:${el.dataset.rev}:${el.dataset.rf}` : el.dataset.rate ? `rate:${el.dataset.rate}` : '');
+    const key = el.id || (el.dataset.rev ? `rev:${el.dataset.rev}:${el.dataset.rf}` : '');
     if (!key) return null;
     return { key, start: el.selectionStart, end: el.selectionEnd, value: el.value, dirty: el.dataset.dirty === '1' };
   }
@@ -586,8 +582,6 @@ const BomxPanels = (() => {
     if (f.key.startsWith('rev:')) {
       const [, id, rf] = f.key.split(':');
       el = box.querySelector(`[data-rev="${CSS.escape(id)}"][data-rf="${CSS.escape(rf)}"]`);
-    } else if (f.key.startsWith('rate:')) {
-      el = box.querySelector(`[data-rate="${CSS.escape(f.key.slice(5))}"]`);
     } else {
       el = document.getElementById(f.key);
     }
@@ -603,10 +597,7 @@ const BomxPanels = (() => {
   }
 
   function projectInspector(p) {
-    const st = app().state;
     const totals = M.projectTotals(p);
-    const currencies = [...new Set([...st.settings.paraBirimleri, ...p.kalemler.map((l) => l.paraBirimi), p.paraBirimi])];
-    const foreign = currencies.filter((c) => c !== 'TRY');
     const nameDiffers = M.projectId(p.seriNo, p.musteri, p.model) !== p.id;
     const revs = p.revizyonlar.slice().reverse();
     return `
@@ -614,7 +605,6 @@ const BomxPanels = (() => {
       <div class="insp-stats">
         <div class="stat"><b>${p.kalemler.length}</b><span>kalem · ${p.bolumler.length} bölüm</span></div>
         <div class="stat"><b>${M.formatQty(totals.pieces)}</b><span>adet</span></div>
-        <div class="stat wide"><b>${esc(U.totalText(totals) || '—')}</b><span>${totals.missingRates.length ? `${esc(totals.missingRates.join(', '))} kuru eksik: para birimi başına toplam` : totals.missingPrice ? `${totals.missingPrice} kalemin fiyatı yok` : `toplam (${esc(p.paraBirimi)})`}</span></div>
       </div>
       <div class="insp-section">Proje</div>
       <div class="field-row three">${field('ipSeri', 'Seri no', p.seriNo)}${field('ipMusteri', 'Müşteri', p.musteri)}${field('ipModel', 'Model', p.model)}</div>
@@ -628,10 +618,6 @@ const BomxPanels = (() => {
         <div class="rev-head"><strong>Rev. ${esc(r.rev)}</strong><span>${esc(U.formatDate(r.tarih))}${r.hazirlayan ? ` · ${esc(r.hazirlayan)}` : ''}</span>${r.rev === p.rev ? '<em>GEÇERLİ</em>' : ''}</div>
         <input class="field-input" data-rev="${esc(r.id)}" data-rf="aciklama" value="${esc(r.aciklama)}" placeholder="${r.rev === '00' ? 'İlk yayın' : 'Bu revizyonda ne değişti?'}">
       </div>`).join('')}
-      <div class="insp-section">Para birimi ve kurlar</div>
-      ${select('ipPara', 'Toplamın para birimi', currencies.map((c) => [c, `${c} · ${(M.CURRENCIES[c] || {}).name || c}`]), p.paraBirimi)}
-      ${foreign.length ? `<div class="rate-grid">${foreign.map((c) => `<span class="cur">${esc(c)}</span><input class="field-input" data-rate="${esc(c)}" value="${esc(M.isNum(p.kurlar[c]) ? M.formatPrice(p.kurlar[c]) : '')}" placeholder="TL karşılığı"><span class="hint">1 ${esc(c)} = ? TRY</span>`).join('')}</div>` : ''}
-      <div class="field-row">${field('ipKurTarihi', 'Kur tarihi', p.kurTarihi, { type: 'date' })}<div class="field"><label>&nbsp;</label><button type="button" class="btn btn-sm" id="ipRatesFromSettings" title="Ayarlar sekmesindeki güncel kurları bu projeye yazar">Ayarlardaki kurları al</button></div></div>
       <div class="insp-section">Notlar</div>
       ${field('ipNotlar', 'Belgenin sonunda yazar', p.notlar, { multiline: true, rows: 4 })}
       <div class="insp-section">Proje</div>
@@ -641,37 +627,40 @@ const BomxPanels = (() => {
       </div>`;
   }
 
+  /**
+   * Kalem bilgisi. Kütüphaneden gelen kalemde yalnız adet (ve bölüm) değişir; ürün bilgisi kütüphanede düzenlenir.
+   * Kütüphanede olmayan serbest kalemin alanları burada yazılır.
+   */
   function lineInspector(line) {
     const p = ed().project;
     const st = app().state;
     const comp = line.komponentId ? st.libraryById.get(line.komponentId) : null;
+    const free = !line.komponentId;
     const diffs = M.libraryDiff(line, comp);
-    const amount = M.lineAmount(line);
     const no = M.lineNumbers(p).get(line.id);
-    const status = !line.komponentId ? ['free', 'Serbest kalem · kütüphanede yok'] : !comp ? ['gone', 'Kütüphanede silinmiş'] : comp.pasif ? ['', 'Kütüphanede · PASİF'] : ['', 'Kütüphaneden'];
-    const labels = { kod: 'Kod', ad: 'Ad', kategori: 'Kategori', uretici: 'Üretici', ureticiKodu: 'Üretici kodu', tedarikci: 'Tedarikçi', birim: 'Birim', fiyat: 'Birim fiyat', paraBirimi: 'Para birimi' };
-    const show = (f, v) => (f === 'fiyat' ? (M.isNum(v) ? M.formatPrice(v) : '—') : v || '—');
+    const status = free ? ['free', 'Serbest kalem · kütüphanede yok'] : !comp ? ['gone', 'Kütüphanede silinmiş'] : comp.pasif ? ['', 'Kütüphanede · PASİF'] : ['', 'Kütüphaneden'];
+    const labels = { kod: 'Stok kodu', ad: 'Tanım', kategori: 'Kategori', uretici: 'Üretici', ureticiKodu: 'Model kodu', tedarikci: 'Tedarikçi', birim: 'Birim', aciklama: 'Açıklama', aciklamaEn: 'Açıklama (EN)', aciklamaDe: 'Açıklama (DE)' };
+    const libValue = (f) => (f.startsWith('aciklama') ? M.bomDescription(comp[f]) : comp[f]);
     const usage = comp ? app().usageOf(comp.id).filter((x) => x.id !== p.id) : [];
+    const photo = line.komponentId ? app().photoOf(line.komponentId) : '';
+    const info = [['Stok kodu', line.kod], ['Tanım', line.ad], ['Model kodu', line.ureticiKodu], ['Açıklama', M.lineDescription(line, p.dil)]].filter(([, v]) => v);
     return `
       <div class="insp-head"><div class="insp-icon ${status[0]}">${esc((line.kod || '?').slice(0, 4))}</div><div><div class="insp-title">${esc(line.kod)} · ${esc(line.ad)}</div><div class="insp-sub">${esc(no)} · ${esc(status[1])}</div></div></div>
-      <div class="field-row">${field('ilMiktar', `Miktar (${line.birim})`, M.formatQty(line.miktar))}${field('ilBirim', 'Birim', line.birim, { list: 'unitList' })}</div>
-      <div class="field-row">${field('ilFiyat', 'Birim fiyat', M.isNum(line.fiyat) ? M.formatPrice(line.fiyat) : '', { placeholder: 'fiyat yok' })}${select('ilPara', 'Para birimi', [...new Set([...st.settings.paraBirimleri, line.paraBirimi])].map((c) => [c, c]), line.paraBirimi)}</div>
-      <div class="field-row">${field('ilIskonto', 'İskonto %', line.iskonto ? M.formatQty(line.iskonto) : '', { placeholder: '0' })}<div class="field"><label>Tutar</label><div class="field-input" style="background:transparent;font-weight:700">${esc(amount === null ? '—' : M.formatMoney(amount, line.paraBirimi))}</div></div></div>
-      ${field('ilReferans', 'Referans (P&ID kodları)', line.referans, { placeholder: 'PE01, PE02' })}
-      ${field('ilNot', 'Not', line.not, { multiline: true, rows: 2 })}
+      ${photo ? `<img class="insp-photo" src="${esc(photo)}" alt="${esc(line.kod)}" data-insp="photo" title="Büyüt">` : ''}
+      <div class="field-row">${field('ilMiktar', M.isPieceUnit(line.birim) ? 'Adet' : `Adet (${line.birim})`, M.formatQty(line.miktar))}${free ? field('ilBirim', 'Birim', line.birim, { list: 'unitList' }) : ''}</div>
       ${p.bolumler.length > 1 ? select('ilBolum', 'Bölüm', p.bolumler.map((s) => [s.id, s.ad]), line.bolum) : ''}
-      <div class="insp-section">Kalem bilgileri <span class="muted" style="font-weight:400">bu projede</span></div>
-      <div class="field-row">${field('ilKod', 'Kod', line.kod)}${field('ilKategori', 'Kategori', line.kategori, { list: 'categoryList' })}</div>
-      ${field('ilAd', 'Ad', line.ad)}
-      <div class="field-row">${field('ilUretici', 'Üretici', line.uretici)}${field('ilUreticiKodu', 'Üretici kodu', line.ureticiKodu)}</div>
-      ${field('ilTedarikci', 'Tedarikçi', line.tedarikci)}
+      ${free ? `
+        ${field('ilKod', 'Stok kodu', line.kod)}
+        ${field('ilAd', 'Tanım', line.ad)}
+        ${field('ilUreticiKodu', 'Model kodu', line.ureticiKodu)}
+        ${field('ilAciklama', 'Açıklama', line.aciklama, { multiline: true, rows: 3 })}`
+        : `<div class="insp-section">Ürün bilgisi <span class="muted" style="font-weight:400">kütüphaneden</span></div><dl class="kv">${info.map(([k, v]) => `<dt>${esc(k)}</dt><dd>${esc(v)}</dd>`).join('')}</dl>`}
       <div class="insp-section">Kütüphane</div>
       ${comp ? `
-        ${diffs.length ? `<div class="libdiff"><b>Kütüphaneden farklı</b><table>${diffs.map((f) => `<tr><td>${esc(labels[f] || f)}</td><td class="old">${esc(show(f, line[f]))}</td><td>→</td><td class="new">${esc(show(f, comp[f]))}</td></tr>`).join('')}</table>
-          <div class="insp-actions"><button type="button" class="btn btn-xs" id="ilRefresh">Kütüphaneden güncelle</button><button type="button" class="btn btn-xs" id="ilWriteBack" title="Bu kalemdeki değerleri kütüphaneye yazar">Kalemdekini kütüphaneye yaz</button></div></div>`
+        ${diffs.length ? `<div class="libdiff"><b>Kütüphaneden farklı</b><table>${diffs.map((f) => `<tr><td>${esc(labels[f] || f)}</td><td class="old">${esc(line[f] || '—')}</td><td>→</td><td class="new">${esc(libValue(f) || '—')}</td></tr>`).join('')}</table>
+          <div class="insp-actions"><button type="button" class="btn btn-xs" id="ilRefresh">Kütüphaneden güncelle</button></div></div>`
           : '<div class="field-help">Kalem kütüphanedeki kayıtla aynı.</div>'}
         ${comp.teslimSuresi !== null ? `<div class="field-help">Teslim süresi: ${comp.teslimSuresi} gün</div>` : ''}
-        ${comp.aciklama ? `<div class="field-help" style="white-space:pre-wrap">${esc(comp.aciklama)}</div>` : ''}
         <div class="insp-actions"><button type="button" class="btn btn-sm" id="ilEditComp">Kütüphanede düzenle</button>${comp.link ? `<a class="btn btn-sm" href="${esc(comp.link)}" target="_blank" rel="noopener">Bağlantı ↗</a>` : ''}</div>
         ${usage.length ? `<div class="field-label">Kullanıldığı diğer projeler (${usage.length})</div><div class="usage-list">${usage.slice(0, 12).map((u) => `<button type="button" class="usage-item" data-open="${esc(u.id)}"><span>${esc(u.id)}</span><span>${esc(U.relTime(u.guncelleme))}</span></button>`).join('')}</div>` : ''}`
         : line.komponentId
@@ -687,17 +676,13 @@ const BomxPanels = (() => {
 
   function multiInspector(lines) {
     const p = ed().project;
-    const t = M.summarize(lines, p.paraBirimi, p.kurlar);
+    const t = M.summarize(lines);
     return `
-      <div class="insp-head"><div class="insp-icon multi">${lines.length}</div><div><div class="insp-title">${lines.length} kalem seçili</div><div class="insp-sub">${esc(U.totalText(t) || 'fiyatsız')}${t.pieces ? ` · ${M.formatQty(t.pieces)} adet` : ''}</div></div></div>
+      <div class="insp-head"><div class="insp-icon multi">${lines.length}</div><div><div class="insp-title">${lines.length} kalem seçili</div><div class="insp-sub">${t.pieces ? `${M.formatQty(t.pieces)} adet` : ''}</div></div></div>
       ${p.bolumler.length > 1 ? `<div class="field"><label for="imBolum">Bölüme taşı</label><div class="input-group"><select id="imBolum" class="field-input">${p.bolumler.map((s) => `<option value="${esc(s.id)}">${esc(s.ad)}</option>`).join('')}</select><button type="button" class="btn btn-sm" id="imMove">Taşı</button></div></div>` : ''}
       <div class="field-row">
-        <div class="field"><label for="imMul">Miktarı çarp</label><div class="input-group"><input id="imMul" class="field-input" placeholder="2"><button type="button" class="btn btn-sm" id="imMulGo">×</button></div></div>
-        <div class="field"><label for="imSet">Miktar yap</label><div class="input-group"><input id="imSet" class="field-input" placeholder="1"><button type="button" class="btn btn-sm" id="imSetGo">=</button></div></div>
-      </div>
-      <div class="field-row">
-        <div class="field"><label for="imDisc">İskonto %</label><div class="input-group"><input id="imDisc" class="field-input" placeholder="10"><button type="button" class="btn btn-sm" id="imDiscGo">Uygula</button></div></div>
-        <div class="field"><label for="imSup">Tedarikçi</label><div class="input-group"><input id="imSup" class="field-input"><button type="button" class="btn btn-sm" id="imSupGo">Yaz</button></div></div>
+        <div class="field"><label for="imMul">Adedi çarp</label><div class="input-group"><input id="imMul" class="field-input" placeholder="2"><button type="button" class="btn btn-sm" id="imMulGo">×</button></div></div>
+        <div class="field"><label for="imSet">Adet yap</label><div class="input-group"><input id="imSet" class="field-input" placeholder="1"><button type="button" class="btn btn-sm" id="imSetGo">=</button></div></div>
       </div>
       <div class="insp-section">İşlem</div>
       <div class="insp-actions">
@@ -740,8 +725,8 @@ const BomxPanels = (() => {
 
   function bindInspector() {
     const box = U.$('inspector');
-    const metaMap = { ipSeri: 'seriNo', ipMusteri: 'musteri', ipModel: 'model', ipBaslik: 'baslik', ipDurum: 'durum', ipFirma: 'firma', ipTarih: 'tarih', ipHaz: 'hazirlayan', ipKon: 'kontrol', ipOnay: 'onay', ipPara: 'paraBirimi', ipKurTarihi: 'kurTarihi', ipNotlar: 'notlar' };
-    const lineMap = { ilBirim: 'birim', ilPara: 'paraBirimi', ilReferans: 'referans', ilNot: 'not', ilKod: 'kod', ilAd: 'ad', ilKategori: 'kategori', ilUretici: 'uretici', ilUreticiKodu: 'ureticiKodu', ilTedarikci: 'tedarikci' };
+    const metaMap = { ipSeri: 'seriNo', ipMusteri: 'musteri', ipModel: 'model', ipBaslik: 'baslik', ipDurum: 'durum', ipFirma: 'firma', ipTarih: 'tarih', ipHaz: 'hazirlayan', ipKon: 'kontrol', ipOnay: 'onay', ipNotlar: 'notlar' };
+    const lineMap = { ilBirim: 'birim', ilKod: 'kod', ilAd: 'ad', ilUreticiKodu: 'ureticiKodu', ilAciklama: 'aciklama' };
     box.addEventListener('input', (e) => {
       if (e.target.matches('input, textarea')) e.target.dataset.dirty = '1';
     });
@@ -788,45 +773,32 @@ const BomxPanels = (() => {
         });
         return;
       }
-      if (t.dataset.rate) {
-        const n = t.value.trim() ? M.parseNumber(t.value) : null;
-        if (t.value.trim() && !(n > 0)) {
-          U.toast('Kur sıfırdan büyük bir sayı olmalı', 'error');
-          renderInspector();
-          return;
-        }
-        ed().mutate(`${t.dataset.rate} kuru`, (x) => {
-          x.kurlar = Object.assign({}, x.kurlar, { [t.dataset.rate]: n });
-          if (!x.kurTarihi) x.kurTarihi = M.today();
-        });
-        return;
-      }
       const sel = [...ed().selection];
       if (sel.length === 1) {
         const id = sel[0];
         const line = ed().lineById(id);
         if (!line) return;
-        if (t.id === 'ilMiktar' || t.id === 'ilFiyat' || t.id === 'ilIskonto') {
+        if (t.id === 'ilMiktar') {
           const raw = t.value.trim();
-          const n = raw === '' ? null : M.parseNumber(raw);
-          if ((raw && n === null) || (n !== null && n < 0) || (t.id === 'ilIskonto' && n > 100)) {
+          const n = raw === '' ? 0 : M.parseNumber(raw);
+          if (n === null || n < 0) {
             U.toast('Geçerli bir sayı yazın', 'error');
             renderInspector();
             return;
           }
-          const key = t.id === 'ilMiktar' ? 'miktar' : t.id === 'ilFiyat' ? 'fiyat' : 'iskonto';
-          ed().updateLine(id, { [key]: key === 'fiyat' ? n : n || 0 }, `${line.kod}: ${key}`);
+          ed().updateLine(id, { miktar: n }, `${line.kod}: Adet ${M.formatQty(n)}`);
           return;
         }
         if (t.id === 'ilBolum') {
           ed().moveLines([id], { sectionId: t.value });
           return;
         }
-        if (lineMap[t.id]) {
+        // Alan yalnız serbest kalemde vardır; kütüphaneden gelen kalemde ürün bilgisi burada değişmez
+        if (lineMap[t.id] && !line.komponentId) {
           const key = lineMap[t.id];
-          const value = key === 'not' ? t.value.trim() : key === 'paraBirimi' ? t.value : M.clean(t.value);
+          const value = key === 'aciklama' ? t.value.trim() : M.clean(t.value);
           if (key === 'kod' && !value) {
-            U.toast('Kod boş olamaz', 'error');
+            U.toast('Stok kodu boş olamaz', 'error');
             renderInspector();
             return;
           }
@@ -838,11 +810,15 @@ const BomxPanels = (() => {
       if (e.key === 'Enter' && e.target.tagName === 'INPUT') {
         e.preventDefault();
         e.target.blur();
-        const go = { imMul: 'imMulGo', imSet: 'imSetGo', imDisc: 'imDiscGo', imSup: 'imSupGo' }[e.target.id];
+        const go = { imMul: 'imMulGo', imSet: 'imSetGo' }[e.target.id];
         if (go) U.$(go).click();
       }
     });
     box.addEventListener('click', async (e) => {
+      if (e.target.dataset.insp === 'photo') {
+        U.lightbox(e.target.src, e.target.alt);
+        return;
+      }
       const b = e.target.closest('button');
       if (!b) return;
       const open = b.dataset.open;
@@ -856,27 +832,9 @@ const BomxPanels = (() => {
         case 'ipRename': ed().renameProject(); break;
         case 'ipRevUp': ed().bumpRevision(); break;
         case 'ipRevDown': ed().dropRevision(); break;
-        case 'ipRatesFromSettings': {
-          const s = app().settings;
-          ed().mutate('Kurlar ayarlardan alındı', (x) => {
-            x.kurlar = Object.assign({}, x.kurlar, s.kurlar);
-            x.kurTarihi = s.kurTarihi || M.today();
-          });
-          U.toast(Object.values(s.kurlar).some((v) => v) ? 'Ayarlardaki kurlar projeye yazıldı' : 'Ayarlarda kur girilmemiş. Ana ekran → Ayarlar → Kurlar', Object.values(s.kurlar).some((v) => v) ? '' : 'warn');
-          break;
-        }
         case 'ipDuplicate': BomxHome.duplicateProjectDialog(ed().currentId()); break;
         case 'ipDelete': BomxHome.deleteProjectDialog(ed().currentId()); break;
         case 'ilRefresh': ed().refreshFromLibrary(sel); break;
-        case 'ilWriteBack': {
-          const line = ed().lineById(sel[0]);
-          const comp = line && app().state.libraryById.get(line.komponentId);
-          if (comp) {
-            const fields = M.libraryDiff(line, comp);
-            if (await U.confirmModal('Kütüphaneye yaz', `${comp.kod} kütüphane kaydında ${fields.length} alan bu kalemdeki değerle değişecek. Diğer projelerdeki kalemler değişmez; onlarda Kontrol sekmesi farkı gösterir.`, 'Yaz')) ed().writeLineToLibrary(sel[0], fields);
-          }
-          break;
-        }
         case 'ilEditComp': {
           const line = ed().lineById(sel[0]);
           const comp = line && app().state.libraryById.get(line.komponentId);
@@ -891,22 +849,15 @@ const BomxPanels = (() => {
         case 'imMulGo': {
           const k = num('imMul');
           if (!(k > 0)) return U.toast('Çarpan sıfırdan büyük olmalı', 'error');
-          ed().updateLines(sel, (l) => { l.miktar = M.round(l.miktar * k, 6); }, `Miktar ×${M.formatQty(k)}`);
+          ed().updateLines(sel, (l) => { l.miktar = M.round(l.miktar * k, 6); }, `Adet ×${M.formatQty(k)}`);
           break;
         }
         case 'imSetGo': {
           const k = num('imSet');
-          if (k === null || k < 0) return U.toast('Geçerli bir miktar yazın', 'error');
-          ed().updateLines(sel, (l) => { l.miktar = k; }, `Miktar ${M.formatQty(k)}`);
+          if (k === null || k < 0) return U.toast('Geçerli bir adet yazın', 'error');
+          ed().updateLines(sel, (l) => { l.miktar = k; }, `Adet ${M.formatQty(k)}`);
           break;
         }
-        case 'imDiscGo': {
-          const k = U.$('imDisc').value.trim() ? num('imDisc') : 0;
-          if (k === null || k < 0 || k > 100) return U.toast('İskonto 0 ile 100 arasında olmalı', 'error');
-          ed().updateLines(sel, (l) => { l.iskonto = k; }, `İskonto %${M.formatQty(k)}`);
-          break;
-        }
-        case 'imSupGo': ed().updateLines(sel, (l) => { l.tedarikci = M.clean(U.$('imSup').value); }, 'Tedarikçi'); break;
         case 'imRefresh': ed().refreshFromLibrary(sel); break;
         case 'imMerge': ed().mergeDuplicates(sel); break;
         case 'imCopy': ed().copySelection(); break;
@@ -931,7 +882,7 @@ const BomxPanels = (() => {
     badge.className = `badge${checks.some((c) => c.level === 'error') ? '' : ' warn'}${serious ? '' : ' hidden'}`;
     const box = U.$('checkList');
     if (!checks.length) {
-      box.innerHTML = '<div class="check-ok">✓ Liste tutarlı: eksik miktar, fiyat, kur ya da kütüphane farkı yok.</div>';
+      box.innerHTML = '<div class="check-ok">✓ Liste tutarlı: eksik adet ya da kütüphane farkı yok.</div>';
       return;
     }
     const fixLabel = { refresh: 'Güncelle', relink: 'Bağla', merge: 'Birleştir', removeZero: 'Sil' };
@@ -968,36 +919,19 @@ const BomxPanels = (() => {
   function dockSummary(p) {
     const totals = M.projectTotals(p);
     const rows = M.categoryBreakdown(p);
-    const max = Math.max(...rows.map((r) => r.partial || 0), 0);
-    const share = (r) => (totals.partial ? (r.partial / totals.partial) * 100 : 0);
-    const currencies = Object.keys(totals.byCurrency).sort();
-    return `<div class="dock-split">
-      <div><table class="dk-table"><thead><tr><th>Kategori</th><th class="r">Kalem</th><th class="r">Adet</th><th class="r">Tutar (${esc(p.paraBirimi)})</th><th>Pay</th></tr></thead><tbody>
-        ${rows.map((r) => `<tr class="dk-row" data-cat="${esc(r.kategori)}"><td class="b">${esc(r.kategori || 'Kategorisiz')}</td><td class="r">${r.count}</td><td class="r">${M.formatQty(r.pieces) || ''}</td>
-          <td class="r">${r.converted === null ? `<span class="warn-text" title="Kur eksik">${esc(U.moneyList(r.byCurrency))}</span>` : esc(M.formatMoney(r.converted, p.paraBirimi))}${r.missingPrice ? ` <span class="warn-text" title="Fiyatsız kalem">+${r.missingPrice}?</span>` : ''}</td>
-          <td><div class="share"><div class="share-bar"><i style="width:${max ? (100 * (r.partial || 0)) / max : 0}%"></i></div><span>%${M.formatAmount(share(r))}</span></div></td></tr>`).join('') || '<tr><td colspan="5" class="dk-empty">Kalem yok</td></tr>'}
-        ${rows.length ? `<tr class="total"><td>Toplam</td><td class="r">${totals.count}</td><td class="r">${M.formatQty(totals.pieces)}</td><td class="r">${esc(U.totalText(totals) || '—')}</td><td></td></tr>` : ''}
-      </tbody></table></div>
-      <div><table class="dk-table"><thead><tr><th>Para birimi</th><th class="r">Tutar</th><th class="r">Kur (TRY)</th><th class="r">${esc(p.paraBirimi)} karşılığı</th></tr></thead><tbody>
-        ${currencies.map((c) => {
-          const rate = M.rateOf(c, p.kurlar);
-          const conv = M.convert(totals.byCurrency[c], c, p.paraBirimi, p.kurlar);
-          return `<tr><td class="b">${esc(c)}</td><td class="r">${esc(M.formatMoney(totals.byCurrency[c], c))}</td><td class="r">${rate ? esc(M.formatPrice(rate)) : '<span class="err-text">kur yok</span>'}</td><td class="r">${conv === null ? '—' : esc(M.formatMoney(conv, p.paraBirimi))}</td></tr>`;
-        }).join('') || '<tr><td colspan="4" class="dk-empty">Fiyatlı kalem yok</td></tr>'}
-        ${totals.missingPrice ? `<tr><td colspan="4" class="warn-text">${totals.missingPrice} kalemin fiyatı girilmemiş; toplama katılmadı.</td></tr>` : ''}
-        ${p.kurTarihi ? `<tr><td colspan="4" class="muted">Kur tarihi: ${esc(U.formatDate(p.kurTarihi))}</td></tr>` : ''}
-      </tbody></table></div>
-    </div>`;
+    return `<table class="dk-table"><thead><tr><th>Kategori</th><th class="r">Kalem</th><th class="r">Adet</th></tr></thead><tbody>
+      ${rows.map((r) => `<tr class="dk-row" data-cat="${esc(r.kategori)}"><td class="b">${esc(r.kategori || 'Kategorisiz')}</td><td class="r">${r.count}</td><td class="r">${M.formatQty(r.pieces) || ''}</td></tr>`).join('') || '<tr><td colspan="3" class="dk-empty">Kalem yok</td></tr>'}
+      ${rows.length ? `<tr class="total"><td>Toplam</td><td class="r">${totals.count}</td><td class="r">${M.formatQty(totals.pieces)}</td></tr>` : ''}
+    </tbody></table>`;
   }
 
   function dockPurchase(p) {
     const groups = M.purchaseList(p);
     if (!p.kalemler.length) return '<div class="dk-empty">Kalem yok</div>';
     return `<div class="dk-actions"><button type="button" class="btn btn-xs" data-dock-act="copy-purchase">Metin olarak kopyala</button><button type="button" class="btn btn-xs" data-dock-act="xlsx-purchase">Excel</button><span class="dk-actions-note">Aynı komponent bölümler arasında toplanır; tedarikçiye göre gruplanır.</span></div>
-      <table class="dk-table"><thead><tr><th>Kod</th><th>Ad</th><th>Üretici / kodu</th><th class="r">Miktar</th><th>Birim</th><th class="r">Birim fiyat</th><th class="r">Tutar</th><th>Referans</th><th>Bölüm</th></tr></thead><tbody>
-      ${groups.map((g) => `<tr class="group"><td colspan="6">${esc(g.tedarikci || 'Tedarikçi belirtilmemiş')} · ${g.items.length} kalem</td><td class="r">${esc(U.totalText(g.totals))}</td><td colspan="2"></td></tr>
-        ${g.items.map((it) => `<tr><td class="b">${esc(it.kod)}</td><td>${esc(it.ad)}</td><td>${esc([it.uretici, it.ureticiKodu].filter(Boolean).join(' · '))}</td><td class="r b">${esc(M.formatQty(it.miktar))}</td><td>${esc(it.birim)}</td>
-          <td class="r">${M.isNum(it.fiyat) ? esc(M.formatMoney(it.fiyat, it.paraBirimi)) : '—'}</td><td class="r">${it.tutar === null ? '—' : esc(M.formatMoney(it.tutar, it.paraBirimi))}</td><td>${esc(it.referans)}</td><td class="muted">${esc(it.bolumler.join(', '))}</td></tr>`).join('')}`).join('')}
+      <table class="dk-table"><thead><tr><th>Stok Kodu</th><th>Tanım</th><th>Üretici / model kodu</th><th class="r">Adet</th><th>Birim</th><th>Referans</th><th>Bölüm</th></tr></thead><tbody>
+      ${groups.map((g) => `<tr class="group"><td colspan="7">${esc(g.tedarikci || 'Tedarikçi belirtilmemiş')} · ${g.items.length} kalem</td></tr>
+        ${g.items.map((it) => `<tr><td class="b">${esc(it.kod)}</td><td>${esc(it.ad)}</td><td>${esc([it.uretici, it.ureticiKodu].filter(Boolean).join(' · '))}</td><td class="r b">${esc(M.formatQty(it.miktar))}</td><td>${esc(it.birim)}</td><td>${esc(it.referans)}</td><td class="muted">${esc(it.bolumler.join(', '))}</td></tr>`).join('')}`).join('')}
       </tbody></table>`;
   }
 
@@ -1016,12 +950,11 @@ const BomxPanels = (() => {
       return `${head}<div class="dk-empty">Yükleniyor…</div>`;
     }
     const rows = [
-      ...d.added.map((x) => `<tr><td class="diff-add">Eklendi</td><td class="b">${esc(x.kod)}</td><td>${esc(x.ad)}</td><td class="r">—</td><td class="r diff-add">${esc(M.formatQty(x.miktar))} ${esc(x.birim)}</td><td class="r">${M.isNum(x.fiyat) ? esc(M.formatMoney(x.fiyat, x.paraBirimi)) : '—'}</td></tr>`),
-      ...d.removed.map((x) => `<tr><td class="diff-del">Çıkarıldı</td><td class="b">${esc(x.kod)}</td><td>${esc(x.ad)}</td><td class="r diff-del">${esc(M.formatQty(x.miktar))} ${esc(x.birim)}</td><td class="r">—</td><td class="r">${M.isNum(x.fiyat) ? esc(M.formatMoney(x.fiyat, x.paraBirimi)) : '—'}</td></tr>`),
-      ...d.changed.map((x) => `<tr><td class="diff-chg">Değişti</td><td class="b">${esc(x.kod)}</td><td>${esc(x.ad)}</td><td class="r">${esc(M.formatQty(x.eski.miktar))}</td><td class="r${x.qty ? ' diff-chg' : ''}">${esc(M.formatQty(x.yeni.miktar))} ${esc(x.birim)}</td>
-        <td class="r${x.price ? ' diff-chg' : ''}">${x.price ? `${M.isNum(x.eski.fiyat) ? esc(M.formatMoney(x.eski.fiyat, x.eski.paraBirimi)) : '—'} → ` : ''}${M.isNum(x.yeni.fiyat) ? esc(M.formatMoney(x.yeni.fiyat, x.yeni.paraBirimi)) : '—'}</td></tr>`)
+      ...d.added.map((x) => `<tr><td class="diff-add">Eklendi</td><td class="b">${esc(x.kod)}</td><td>${esc(x.ad)}</td><td class="r">—</td><td class="r diff-add">${esc(M.formatQty(x.miktar))} ${esc(x.birim)}</td></tr>`),
+      ...d.removed.map((x) => `<tr><td class="diff-del">Çıkarıldı</td><td class="b">${esc(x.kod)}</td><td>${esc(x.ad)}</td><td class="r diff-del">${esc(M.formatQty(x.miktar))} ${esc(x.birim)}</td><td class="r">—</td></tr>`),
+      ...d.changed.map((x) => `<tr><td class="diff-chg">Değişti</td><td class="b">${esc(x.kod)}</td><td>${esc(x.ad)}</td><td class="r">${esc(M.formatQty(x.eski.miktar))}</td><td class="r diff-chg">${esc(M.formatQty(x.yeni.miktar))} ${esc(x.birim)}</td></tr>`)
     ];
-    return `${head}<table class="dk-table"><thead><tr><th>Değişiklik</th><th>Kod</th><th>Ad</th><th class="r">Rev. ${esc(chosen)}</th><th class="r">Şimdi</th><th class="r">Birim fiyat</th></tr></thead><tbody>${rows.join('') || '<tr><td colspan="6" class="dk-empty">Rev. ' + esc(chosen) + ' hâlinden bu yana komponent, miktar ya da fiyat değişmedi.</td></tr>'}</tbody></table>`;
+    return `${head}<table class="dk-table"><thead><tr><th>Değişiklik</th><th>Stok Kodu</th><th>Tanım</th><th class="r">Rev. ${esc(chosen)}</th><th class="r">Şimdi</th></tr></thead><tbody>${rows.join('') || '<tr><td colspan="5" class="dk-empty">Rev. ' + esc(chosen) + ' hâlinden bu yana komponent ya da adet değişmedi.</td></tr>'}</tbody></table>`;
   }
 
   async function loadDiff(rev) {
@@ -1034,7 +967,7 @@ const BomxPanels = (() => {
 
   function dockRefs(p) {
     const refs = M.referenceIndex(p);
-    if (!refs.length) return '<div class="dk-empty">Referans girilmemiş. Tablodaki Referans sütununa P&ID kodlarını yazın (PE01, PE02): hangi kalemin hangi koda ait olduğu burada listelenir, tekrar edenler işaretlenir.</div>';
+    if (!refs.length) return '<div class="dk-empty">Referans yok. P&PX makine kaydından açılan projelerde kalemlerin P&ID kodları burada listelenir.</div>';
     const numbers = M.lineNumbers(p);
     return `<table class="dk-table"><thead><tr><th>Referans</th><th>Sıra</th><th>Kod</th><th>Ad</th><th>Üretici kodu</th></tr></thead><tbody>
       ${refs.map((r) => r.lines.map((l, i) => `<tr class="dk-row" data-line="${esc(l.id)}"><td class="b${r.lines.length > 1 ? ' warn-text' : ''}">${i ? '' : esc(r.ref)}${!i && r.lines.length > 1 ? ' ⚑' : ''}</td><td class="muted">${esc(numbers.get(l.id))}</td><td class="b">${esc(l.kod)}</td><td>${esc(l.ad)}</td><td>${esc(l.ureticiKodu)}</td></tr>`).join('')).join('')}
@@ -1149,7 +1082,7 @@ const BomxPanels = (() => {
     });
   }
 
-  /* ─── Alt çubuk: bölüm sekmeleri ve toplam ────────────── */
+  /* ─── Alt çubuk: bölüm sekmeleri ve adet özeti ────────── */
 
   let tabsHeld = false;
 
@@ -1173,9 +1106,9 @@ const BomxPanels = (() => {
     if (!p) return;
     const t = M.projectTotals(p);
     const sel = ed().displayOrder().filter((l) => ed().selection.has(l.id));
-    const selText = sel.length > 1 ? `<span>Seçili ${sel.length}: <b>${esc(U.totalText(M.summarize(sel, p.paraBirimi, p.kurlar)) || '—')}</b></span>` : '';
-    const warn = t.missingRates.length ? `<span class="warn" title="Kur eksik">${esc(t.missingRates.join(', '))} kuru yok</span>` : t.missingPrice ? `<span class="warn">${t.missingPrice} fiyatsız</span>` : '';
-    U.$('totals').innerHTML = `${selText}<span>${t.count} kalem${t.pieces ? ` · ${esc(M.formatQty(t.pieces))} adet` : ''}</span>${warn}<span>Toplam <strong>${esc(U.totalText(t) || '—')}</strong></span>`;
+    const selSum = M.summarize(sel);
+    const selText = sel.length > 1 ? `<span>Seçili ${sel.length}${selSum.pieces ? `: <b>${esc(M.formatQty(selSum.pieces))} adet</b>` : ''}</span>` : '';
+    U.$('totals').innerHTML = `${selText}<span>${t.count} kalem${t.pieces ? ` · <strong>${esc(M.formatQty(t.pieces))} adet</strong>` : ''}</span>`;
   }
 
   function bindBottom() {
@@ -1320,6 +1253,8 @@ const BomxPanels = (() => {
       if (!ed().project) return;
       renderLeftList(true);
       renderDetail();
+      ed().render();
+      renderInspector();
     });
     app().on('templates', () => {
       if (ed().project && P.left === 'templates') renderTemplates();

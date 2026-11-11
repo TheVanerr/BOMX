@@ -140,7 +140,7 @@ test('rapor olmayan HTML dosyasındaki tablo satırlara çevrilir (ERP\'nin .xls
   assert.equal(rep.kind, 'tablo');
   assert.deepEqual(rep.tables[0], [['Stok Kodu', 'Stok Adı', 'Fiyat', ''], ['10 00001', 'A & B kalın', '12,50', 'EUR'], ['10 00002', '"Tırnak" ve\'A', '', '']]);
   const t = M.tableToComponents(rep.tables[0]);
-  assert.deepEqual(t.columns.slice(0, 3), ['kod', 'ad', 'fiyat']);
+  assert.deepEqual(t.columns.slice(0, 3), ['kod', 'ad', '']);
 });
 
 test('kodlar dosyalar ve makineler arasında birleşir; makine üyeliği alt kırılıma yayılır', () => {
@@ -341,17 +341,17 @@ test('HTML tablosu: adlı karakterler çözülür, birleşik hücreler doğru s�
   assert.ok(Date.now() - t0 < 1500, `8000 satır ${Date.now() - t0} ms`);
 });
 
-test('güncelle kipinde boş hücre var olan değeri (birim, para birimi, favori, pasif) varsayılanla ezmez', () => {
-  const library = [M.normalizeComponent({ id: 'a', kod: 'PE01', ad: 'Pompa', fiyat: 100, paraBirimi: 'EUR', birim: 'm', favori: true, pasif: true })];
-  const rows = [['Kod', 'Ad', 'Birim Fiyat', 'Para Birimi', 'Birim', 'Favori', 'Pasif'], ['PE01', 'Pompa', '120', '', '', '', '']];
+test('güncelle kipinde boş hücre var olan değeri (birim, favori, pasif) varsayılanla ezmez', () => {
+  const library = [M.normalizeComponent({ id: 'a', kod: 'PE01', ad: 'Pompa', kategori: 'Eski', birim: 'm', favori: true, pasif: true })];
+  const rows = [['Kod', 'Ad', 'Kategori', 'Birim', 'Favori', 'Pasif'], ['PE01', 'Pompa', 'Yeni', '', '', '']];
   const plan = M.planImport(M.tableToComponents(rows).items, library, 'merge');
   assert.equal(plan.update.length, 1);
   const after = plan.update[0].after;
-  assert.deepEqual([after.fiyat, after.paraBirimi, after.birim, after.favori, after.pasif], [120, 'EUR', 'm', true, true]);
-  assert.deepEqual(plan.update[0].changes, ['fiyat']);
+  assert.deepEqual([after.kategori, after.birim, after.favori, after.pasif], ['Yeni', 'm', true, true]);
+  assert.deepEqual(plan.update[0].changes, ['kategori']);
   // "Değiştir" kipinde boş hücre değeri temizler (varsayılana döner)
   const replaced = M.planImport(M.tableToComponents(rows).items, library, 'replace').update[0].after;
-  assert.deepEqual([replaced.paraBirimi, replaced.birim, replaced.favori], ['TRY', 'Adet', false]);
+  assert.deepEqual([replaced.birim, replaced.favori], ['Adet', false]);
 });
 
 test('hatalı ilk satır kodu sahiplenmez: aynı kodun sonraki doğru satırı alınır', () => {

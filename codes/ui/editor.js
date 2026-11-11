@@ -9,24 +9,15 @@ const BomxEditor = (() => {
   const { esc } = U;
   const app = () => BomxApp;
 
-  /* Ekranda miktar, fiyat ve tutar adın hemen yanındadır (dar ekranda da kaydırmadan görünür);
-     PDF ve Excel'de sütunlar belgedeki sabit sırayla dizilir (BomxModel.COLUMNS). */
+  /* Malzeme listesinin sütunları sabittir (BomxModel.COLUMNS ile aynı sıra). Kütüphaneden gelen kalemde tabloda yalnız adet yazılır. */
   const SCREEN_COLUMNS = [
     { key: 'handle', w: '22px', label: '' },
-    { key: 'no', w: '48px', label: 'Sıra' },
-    { key: 'kod', w: '124px', label: 'Kod' },
-    { key: 'ad', w: 'minmax(210px, 2.4fr)', label: 'Ad' },
-    { key: 'miktar', w: '76px', label: 'Miktar', edit: 'num', align: 'r' },
-    { key: 'birim', w: '56px', label: 'Birim' },
-    { key: 'fiyat', w: '112px', label: 'Birim Fiyat', edit: 'num', align: 'r' },
-    { key: 'iskonto', w: '60px', label: 'İsk. %', edit: 'num', align: 'r' },
-    { key: 'tutar', w: '118px', label: 'Tutar', align: 'r' },
-    { key: 'uretici', w: '116px', label: 'Üretici' },
-    { key: 'ureticiKodu', w: '138px', label: 'Üretici Kodu' },
-    { key: 'tedarikci', w: '118px', label: 'Tedarikçi' },
-    { key: 'kategori', w: '112px', label: 'Kategori' },
-    { key: 'referans', w: '128px', label: 'Referans', edit: 'text' },
-    { key: 'not', w: 'minmax(140px, 1fr)', label: 'Not', edit: 'text' }
+    { key: 'foto', w: '62px', label: 'Fotoğraf' },
+    { key: 'kod', w: '124px', label: 'Stok Kodu' },
+    { key: 'ad', w: 'minmax(220px, 1.5fr)', label: 'Tanım' },
+    { key: 'ureticiKodu', w: 'minmax(150px, 0.8fr)', label: 'Model Kodu' },
+    { key: 'miktar', w: '112px', label: 'Adet', edit: 'num', align: 'r' },
+    { key: 'aciklama', w: 'minmax(260px, 2.2fr)', label: 'Açıklama' }
   ];
   const CLIP_KEY = 'bomx_pano';
   const SAVE_DELAY = 600;
@@ -48,7 +39,6 @@ const BomxEditor = (() => {
     saving: null,
     saveTimer: null,
     saveFailed: false,
-    columns: null,
     renderQueued: false
   };
 
@@ -64,11 +54,6 @@ const BomxEditor = (() => {
     return E.activeSection;
   }
 
-  function visibleColumns() {
-    const keys = new Set(E.columns || M.DEFAULT_COLUMNS);
-    return SCREEN_COLUMNS.filter((c) => c.key === 'handle' || keys.has(c.key) || M.COLUMNS.find((x) => x.key === c.key && x.always));
-  }
-
   /** Ekranda görünen sırayla kalemler (bölüm sırası, bölüm içinde liste sırası) */
   function displayOrder() {
     if (!E.project) return [];
@@ -77,7 +62,7 @@ const BomxEditor = (() => {
 
   function lineMatches(line, tokens) {
     if (!tokens.length) return true;
-    const text = M.fold([line.kod, line.ad, line.kategori, line.uretici, line.ureticiKodu, line.tedarikci, line.referans, line.not].join(' '));
+    const text = M.fold([line.kod, line.ad, line.ureticiKodu, M.lineDescription(line, E.project.dil), line.kategori, line.uretici].join(' '));
     return tokens.every((t) => text.includes(t));
   }
 
@@ -479,7 +464,7 @@ const BomxEditor = (() => {
   function changeQty(ids, delta) {
     updateLines(ids, (l) => {
       l.miktar = Math.max(0, M.round((Number(l.miktar) || 0) + delta, 6));
-    }, delta > 0 ? 'Miktar artırıldı' : 'Miktar azaltıldı');
+    }, delta > 0 ? 'Adet artırıldı' : 'Adet azaltıldı');
   }
 
   /* ── Kütüphaneyle eşleştirme ── */
@@ -514,7 +499,7 @@ const BomxEditor = (() => {
     const groups = new Map();
     for (const l of E.project.kalemler) {
       if (!set.has(l.id)) continue;
-      const key = `${l.bolum}|${M.bomKey(l)}|${l.fiyat}|${l.paraBirimi}|${l.birim}`;
+      const key = `${l.bolum}|${M.bomKey(l)}|${l.birim}`;
       if (!groups.has(key)) groups.set(key, []);
       groups.get(key).push(l.id);
     }
@@ -549,7 +534,7 @@ const BomxEditor = (() => {
     if (!line) return;
     const res = await app().saveComponents([{
       kod: line.kod, ad: line.ad, kategori: line.kategori, uretici: line.uretici, ureticiKodu: line.ureticiKodu,
-      tedarikci: line.tedarikci, birim: line.birim, fiyat: line.fiyat, paraBirimi: line.paraBirimi
+      tedarikci: line.tedarikci, birim: line.birim, aciklama: line.aciklama, aciklamaEn: line.aciklamaEn, aciklamaDe: line.aciklamaDe
     }]);
     if (!res.ok) {
       U.toast(res.errors.map((e) => e.errors.join(', ')).join(' · '), 'error');
@@ -557,18 +542,6 @@ const BomxEditor = (() => {
     }
     updateLine(id, { komponentId: res.saved[0].id }, 'Kütüphaneye eklendi');
     U.toast(`${line.kod} kütüphaneye eklendi`);
-  }
-
-  /** Kalemdeki değer (ör. yeni fiyat teklifi) kütüphaneye yazılır */
-  async function writeLineToLibrary(id, fields) {
-    const line = lineById(id);
-    const c = line && line.komponentId ? lib().get(line.komponentId) : null;
-    if (!c) return;
-    const next = Object.assign({}, c);
-    for (const f of fields) next[f] = line[f];
-    const res = await app().saveComponents([next]);
-    if (!res.ok) U.toast(res.errors.map((e) => e.errors.join(', ')).join(' · '), 'error');
-    else U.toast(`${c.kod} kütüphanede güncellendi`);
   }
 
   /* ─── Bölümler ────────────────────────────────────────── */
@@ -843,48 +816,36 @@ const BomxEditor = (() => {
     });
   }
 
-  function cellValue(line, key) {
-    switch (key) {
-      case 'miktar': return M.formatQty(line.miktar);
-      case 'fiyat': return M.isNum(line.fiyat) ? M.formatPrice(line.fiyat) : '';
-      case 'iskonto': return line.iskonto ? M.formatQty(line.iskonto) : '';
-      default: return line[key] || '';
-    }
-  }
+  const cellValue = (line) => M.formatQty(line.miktar);
 
-  function rowHtml(line, no, diffs) {
-    const cols = visibleColumns();
+  function rowHtml(line, diffs) {
     const comp = line.komponentId ? lib().get(line.komponentId) : null;
     const diffSet = new Set(diffs);
-    const amount = M.lineAmount(line);
-    const cells = cols.map((c) => {
+    const cells = SCREEN_COLUMNS.map((c) => {
       const cls = `bt-cell${c.align ? ` ${c.align}` : ''}${diffSet.has(c.key) ? ' diff' : ''}`;
       switch (c.key) {
-        case 'handle': return `<div class="bt-cell bt-handle" draggable="true" title="Sürükleyerek taşıyın">⋮⋮</div>`;
-        case 'no': return `<div class="bt-cell bt-no">${esc(no)}</div>`;
+        case 'handle': return '<div class="bt-cell bt-handle" draggable="true" title="Sürükleyerek taşıyın">⋮⋮</div>';
+        case 'foto': {
+          const photo = line.komponentId ? app().photoOf(line.komponentId) : '';
+          return `<div class="bt-cell bt-foto">${photo ? `<img class="bt-thumb" src="${esc(photo)}" alt="" loading="lazy" draggable="false" title="Büyüt">` : ''}</div>`;
+        }
         case 'kod': {
           const tag = !line.komponentId ? '<span class="free" title="Kütüphanede olmayan kalem">SERBEST</span>'
             : !comp ? '<span class="free" title="Kütüphanede silinmiş">SİLİNMİŞ</span>' : '';
-          const flag = diffs.length ? `<span class="bt-flag" title="Kütüphaneden farklı: ${esc(diffs.map((d) => d).join(', '))}">⚑</span>` : '';
+          const flag = diffs.length ? `<span class="bt-flag" title="Kütüphaneden farklı: ${esc(diffs.join(', '))}">⚑</span>` : '';
           const pas = comp && comp.pasif ? '<span class="bt-flag" title="Pasif komponent">⊘</span>' : '';
           return `<div class="${cls} bt-kod" title="${esc(line.kod)}"><span>${U.highlight(line.kod, E.filter)}</span>${tag}${flag}${pas}</div>`;
         }
-        case 'ad': return `<div class="${cls} bt-ad" title="${esc(line.ad)}"><span>${U.highlight(line.ad, E.filter)}</span></div>`;
-        case 'birim': return `<div class="${cls} c">${esc(line.birim)}</div>`;
-        case 'tutar': return `<div class="${cls} bt-amount${amount === null ? ' none' : ''}">${amount === null ? '—' : esc(M.formatMoney(amount, line.paraBirimi))}</div>`;
-        default:
-          // Çok satırlı not tek satırlık kutuda satır sonlarını kaybederdi: tabloda salt okunur, sağ panelde düzenlenir
-          if (c.key === 'not' && line.not.includes('\n')) {
-            return `<div class="${cls} bt-sub" title="${esc(line.not)}" data-multiline="1"><span>${U.highlight(line.not.replace(/\n+/g, ' · '), E.filter)}</span></div>`;
-          }
-          if (c.edit) {
-            const num = c.edit === 'num';
-            const value = cellValue(line, c.key);
-            const bad = c.key === 'miktar' && !(Number(line.miktar) > 0);
-            const suffix = c.key === 'fiyat' ? `<span class="bt-sub" style="margin-left:3px">${esc(M.currencySymbol(line.paraBirimi))}</span>` : '';
-            return `<div class="${cls}"><input class="bt-in${num ? ' num' : ''}${c.key === 'miktar' ? ' qty' : ''}${bad ? ' bad' : ''}" data-f="${c.key}" value="${esc(value)}" placeholder="${esc(c.placeholder || (c.key === 'fiyat' ? 'fiyat' : ''))}" spellcheck="false" autocomplete="off">${suffix}</div>`;
-          }
-          return `<div class="${cls} bt-sub" title="${esc(line[c.key] || '')}"><span>${U.highlight(line[c.key] || '', E.filter)}</span></div>`;
+        case 'ad': return `<div class="${cls} bt-ad bt-text" title="${esc(line.ad)}"><span>${U.highlight(line.ad, E.filter)}</span></div>`;
+        case 'miktar': {
+          const bad = !(Number(line.miktar) > 0);
+          const unit = M.isPieceUnit(line.birim) ? '' : `<span class="bt-sub bt-unit">${esc(line.birim)}</span>`;
+          return `<div class="${cls}"><input class="bt-in num qty${bad ? ' bad' : ''}" data-f="miktar" value="${esc(cellValue(line))}" spellcheck="false" autocomplete="off" inputmode="decimal">${unit}</div>`;
+        }
+        default: {
+          const value = c.key === 'aciklama' ? M.lineDescription(line, E.project.dil) : line[c.key] || '';
+          return `<div class="${cls} bt-sub bt-text" title="${esc(value)}"><span>${U.highlight(String(value).replace(/\n+/g, ' · '), E.filter)}</span></div>`;
+        }
       }
     });
     return `<div class="bt-row${E.selection.has(line.id) ? ' selected' : ''}" data-id="${esc(line.id)}" data-drop>${cells.join('')}</div>`;
@@ -895,11 +856,11 @@ const BomxEditor = (() => {
     return `<div class="bt-start">
       <strong>Malzeme listesi boş</strong>
       ${count
-        ? `Soldaki kütüphaneden (${count} komponent) ekleyin: arayın, satırdaki <b>+</b> düğmesine basın, çift tıklayın ya da tabloya sürükleyin. Miktarı satırdaki kutuya yazabilirsiniz.`
+        ? `Soldaki kütüphaneden (${count} komponent) ekleyin: arayın, satırdaki <b>+</b> düğmesine basın, çift tıklayın ya da tabloya sürükleyin. Listede yalnız adet değişir; ürün bilgileri kütüphaneden gelir.`
         : 'Kütüphanede henüz komponent yok. Ana ekrandaki <b>Komponentler</b> sekmesinden ekleyin ya da CSV / Excel yükleyin; ya da kütüphanesiz <b>serbest kalem</b> ekleyin.'}
       <div class="keys">
         <kbd>/</kbd><span>komponent aramaya git; <kbd>↑</kbd> <kbd>↓</kbd> ile seçip <kbd>Enter</kbd> ile ekle</span>
-        <kbd>Ctrl</kbd><span>+ <kbd>V</kbd> Excel'den kod ve miktar sütunlarını yapıştır</span>
+        <kbd>Ctrl</kbd><span>+ <kbd>V</kbd> Excel'den stok kodu ve adet sütunlarını yapıştır</span>
         <kbd>Ctrl</kbd><span>+ <kbd>Z</kbd> geri al, <kbd>Ctrl</kbd> + <kbd>Y</kbd> yinele, <kbd>Ctrl</kbd> + <kbd>S</kbd> kaydet</span>
       </div>
       <div class="actions">
@@ -942,16 +903,18 @@ const BomxEditor = (() => {
     }
     const focus = captureFocus();
     const p = E.project;
-    const cols = visibleColumns();
+    const cols = SCREEN_COLUMNS;
     table.style.setProperty('--bt-cols', cols.map((c) => c.w).join(' '));
     table.style.setProperty('--bt-min', `${cols.reduce((n, c) => n + parseInt(c.w.match(/(\d+)px/)[1], 10), 0)}px`);
-    const head = `<div class="bt-head">${cols.map((c) => `<div class="${c.align || ''}" ${c.key === 'handle' ? '' : `title="${esc(c.label)} — sağ tık: sütunları seç"`}>${esc(c.label)}</div>`).join('')}</div>`;
+    // Başlıklar içerik dilinde (araç çubuğundaki TR / EN / DE)
+    const T = M.docText(p.dil);
+    const headText = (c) => { const col = M.COLUMNS.find((x) => x.key === c.key); return col ? T[col.doc] || c.label : c.label; };
+    const head = `<div class="bt-head">${cols.map((c) => `<div class="${c.align || ''}">${esc(headText(c))}</div>`).join('')}</div>`;
     if (!p.kalemler.length && p.bolumler.length === 1 && !E.filter) {
       table.innerHTML = head + startHtml();
       updateCounts();
       return;
     }
-    const numbers = M.lineNumbers(p);
     const library = lib();
     const tokens = filterTokens();
     const multi = p.bolumler.length > 1;
@@ -963,15 +926,13 @@ const BomxEditor = (() => {
       const shown = tokens.length ? lines.filter((l) => lineMatches(l, tokens)) : lines;
       if (tokens.length && !shown.length) return;
       const collapsed = !tokens.length && E.collapsed.has(s.id);
-      const sums = M.summarize(lines, p.paraBirimi, p.kurlar);
-      const total = U.totalText(sums);
+      const sums = M.summarize(lines);
       const pieces = sums.pieces ? ` · ${M.formatQty(sums.pieces)} adet` : '';
       parts.push(`<div class="bt-section${s.id === active ? ' active' : ''}${collapsed ? ' collapsed' : ''}" data-sec="${esc(s.id)}" data-drop title="Tıklayın: eklenecek bölüm olsun · çift tık: adını değiştir">
         <button type="button" class="bt-collapse" data-act="collapse" title="Daralt / aç">▼</button>
         <span class="bt-sec-no">${si + 1}</span>
         <span class="bt-sec-name">${esc(s.ad)}</span>
         <span class="bt-sec-meta">${lines.length} kalem${pieces}${tokens.length ? ` · ${shown.length} eşleşen` : ''}</span>
-        ${total ? `<span class="bt-sec-total">${esc(total)}</span>` : ''}
         <span class="bt-sec-actions">
           <button type="button" data-act="sec-up" title="Yukarı taşı">${'↑'}</button>
           <button type="button" data-act="sec-down" title="Aşağı taşı">${'↓'}</button>
@@ -986,7 +947,7 @@ const BomxEditor = (() => {
       }
       for (const line of shown) {
         const comp = line.komponentId ? library.get(line.komponentId) : null;
-        parts.push(rowHtml(line, numbers.get(line.id), M.libraryDiff(line, comp)));
+        parts.push(rowHtml(line, M.libraryDiff(line, comp)));
       }
     });
     if (parts.length === 1) parts.push(`<div class="bt-start"><strong>Eşleşen kalem yok</strong>"${esc(E.filter)}" aramasına uyan kalem bulunamadı.</div>`);
@@ -1004,7 +965,23 @@ const BomxEditor = (() => {
       : `${p.kalemler.length} kalem · ${p.bolumler.length} bölüm`;
   }
 
+  function setLanguage(lang) {
+    if (!E.project || E.project.dil === lang) return;
+    setMeta('dil', lang, 'İçerik dili');
+    paintLanguage();
+  }
+
+  function paintLanguage() {
+    if (!E.project) return;
+    U.$('bomLang').querySelectorAll('[data-lang]').forEach((b) => {
+      const on = b.dataset.lang === E.project.dil;
+      b.classList.toggle('active', on);
+      b.setAttribute('aria-pressed', String(on));
+    });
+  }
+
   function updateToolbar() {
+    paintLanguage();
     U.$('btnUndo').disabled = !E.undo.length;
     U.$('btnRedo').disabled = !E.redo.length;
     U.$('btnUndo').title = E.undo.length ? `Geri al: ${E.undo[E.undo.length - 1].label} (Ctrl+Z)` : 'Geri al (Ctrl+Z)';
@@ -1045,69 +1022,27 @@ const BomxEditor = (() => {
     }));
   }
 
-  function setColumns(keys) {
-    E.columns = keys;
-    U.setPref('sutunlar', keys);
-    render();
-  }
-
-  function columnMenu(x, y) {
-    const keys = new Set(E.columns || M.DEFAULT_COLUMNS);
-    const items = [{ title: 'Görünen sütunlar' }];
-    for (const c of M.COLUMNS) {
-      if (c.always) continue;
-      items.push({
-        label: `${keys.has(c.key) ? '✓ ' : ' '}${c.label}`,
-        run: () => {
-          const next = new Set(keys);
-          if (next.has(c.key)) next.delete(c.key);
-          else next.add(c.key);
-          setColumns(M.COLUMNS.map((x2) => x2.key).filter((k) => next.has(k) || M.COLUMNS.find((z) => z.key === k).always));
-        }
-      });
-    }
-    items.push('-', { label: 'Varsayılan sütunlar', run: () => setColumns(M.DEFAULT_COLUMNS.slice()) });
-    U.contextMenu(x, y, items);
-  }
-
   /* ─── Satır içi düzenleme ─────────────────────────────── */
 
+  /** Tablodaki tek düzenlenebilir hücre: adet */
   function commitInput(input) {
     const row = input.closest('.bt-row');
     if (!row) return true;
     const line = lineById(row.dataset.id);
     if (!line) return true;
-    const f = input.dataset.f;
     input.dataset.dirty = '';
     const raw = input.value.trim();
-    if (f === 'miktar' || f === 'fiyat' || f === 'iskonto') {
-      const n = raw === '' ? null : M.parseNumber(raw);
-      if (raw !== '' && n === null) {
-        U.toast(`"${raw}" sayı değil`, 'error');
-        input.value = cellValue(line, f);
-        return false;
-      }
-      if (n !== null && n < 0) {
-        U.toast('Eksi değer girilemez', 'error');
-        input.value = cellValue(line, f);
-        return false;
-      }
-      if (f === 'iskonto' && n !== null && n > 100) {
-        U.toast('İskonto en çok %100 olur', 'error');
-        input.value = cellValue(line, f);
-        return false;
-      }
-      const value = f === 'fiyat' ? n : n === null ? 0 : n;
-      if ((line[f] === null && value === null) || (value !== null && line[f] !== null && M.round(line[f], 6) === M.round(value, 6))) {
-        input.value = cellValue(line, f);
-        return true;
-      }
-      const labels = { miktar: 'Miktar', fiyat: 'Birim fiyat', iskonto: 'İskonto' };
-      updateLine(line.id, { [f]: value }, `${line.kod}: ${labels[f]} ${value === null ? 'silindi' : f === 'fiyat' ? M.formatPrice(value) : M.formatQty(value)}`);
+    const n = raw === '' ? 0 : M.parseNumber(raw);
+    if (n === null || n < 0) {
+      U.toast(n === null ? `"${raw}" sayı değil` : 'Eksi değer girilemez', 'error');
+      input.value = cellValue(line);
+      return false;
+    }
+    if (M.round(line.miktar, 6) === M.round(n, 6)) {
+      input.value = cellValue(line);
       return true;
     }
-    if (raw === line[f]) return true;
-    updateLine(line.id, { [f]: f === 'not' ? raw : M.clean(raw) }, `${line.kod}: ${f === 'referans' ? 'Referans' : 'Not'}`);
+    updateLine(line.id, { miktar: n }, `${line.kod}: Adet ${M.formatQty(n)}`);
     return true;
   }
 
@@ -1151,7 +1086,7 @@ const BomxEditor = (() => {
       const f = input.dataset.f;
       if (e.key === 'Escape') {
         const line = lineById(id);
-        input.value = cellValue(line, f);
+        input.value = cellValue(line);
         input.dataset.dirty = '';
         input.blur();
         e.stopPropagation();
@@ -1184,6 +1119,11 @@ const BomxEditor = (() => {
       }
     });
     table.addEventListener('click', (e) => {
+      if (e.target.classList.contains('bt-thumb')) {
+        const line = lineById(e.target.closest('.bt-row').dataset.id);
+        if (line) U.lightbox(e.target.src, [line.kod, line.ad].filter(Boolean).join(' · '));
+        return;
+      }
       const start = e.target.closest('[data-start]');
       if (start) {
         const what = start.dataset.start;
@@ -1224,11 +1164,6 @@ const BomxEditor = (() => {
       }
     });
     table.addEventListener('contextmenu', (e) => {
-      if (e.target.closest('.bt-head')) {
-        e.preventDefault();
-        columnMenu(e.clientX, e.clientY);
-        return;
-      }
       const sec = e.target.closest('.bt-section');
       if (sec) {
         e.preventDefault();
@@ -1273,8 +1208,8 @@ const BomxEditor = (() => {
       { title: one ? `${one.kod} · ${one.ad}` : `${lines.length} kalem` },
       { label: 'Çoğalt', key: 'Ctrl+D', run: () => duplicateLines(ids) },
       { label: 'Kopyala', key: 'Ctrl+C', run: () => copySelection() },
-      { label: 'Miktar +1', key: '+', run: () => changeQty(ids, 1) },
-      { label: 'Miktar −1', key: '−', run: () => changeQty(ids, -1) },
+      { label: 'Adet +1', key: '+', run: () => changeQty(ids, 1) },
+      { label: 'Adet −1', key: '−', run: () => changeQty(ids, -1) },
       { label: 'Bölüme taşı', disabled: !others.length, items: others.map((s) => ({ label: s.ad, run: () => moveLines(ids, { sectionId: s.id }) })) },
       { label: 'Yukarı taşı', key: 'Alt+↑', run: () => nudgeSelection(-1) },
       { label: 'Aşağı taşı', key: 'Alt+↓', run: () => nudgeSelection(1) },
@@ -1295,7 +1230,7 @@ const BomxEditor = (() => {
   let dragIds = null;
 
   function clearDropMarks() {
-    document.querySelectorAll('.drop-before, .drop-after, .bt-section.drop, .bt-empty.drop, .sec-tab.drop').forEach((el) => el.classList.remove('drop-before', 'drop-after', 'drop'));
+    document.querySelectorAll('.drop-before, .drop-after, .bt-section.drop, .bt-empty.drop, .bt-start.drop, #bomTable.drop, .sec-tab.drop').forEach((el) => el.classList.remove('drop-before', 'drop-after', 'drop'));
   }
 
   function dropTarget(e) {
@@ -1315,6 +1250,9 @@ const BomxEditor = (() => {
     }
     const sec = e.target.closest('.bt-section, .bt-empty');
     if (sec) return { el: sec, cls: 'drop', sectionId: sec.dataset.sec, beforeId: null };
+    // Boş liste ya da tablonun boş kısmı: eklenecek bölümün sonuna
+    const table = U.$('bomTable');
+    if (E.project && table.contains(e.target) && !e.target.closest('.bt-head')) return { el: e.target.closest('.bt-start') || table, cls: 'drop', sectionId: activeSectionId(), beforeId: null };
     return null;
   }
 
@@ -1388,9 +1326,8 @@ const BomxEditor = (() => {
   /* ─── Pano ────────────────────────────────────────────── */
 
   function linesToTsv(lines) {
-    const head = ['Kod', 'Ad', 'Miktar', 'Birim', 'Birim Fiyat', 'Para Birimi', 'Tutar', 'Üretici', 'Üretici Kodu', 'Referans', 'Not'];
-    const rows = lines.map((l) => [l.kod, l.ad, M.formatQty(l.miktar), l.birim, M.isNum(l.fiyat) ? M.formatPrice(l.fiyat) : '', l.paraBirimi,
-      M.formatAmount(M.lineAmount(l)), l.uretici, l.ureticiKodu, l.referans, l.not.replace(/\s+/g, ' ')]);
+    const head = ['Stok Kodu', 'Tanım', 'Model Kodu', 'Adet', 'Birim', 'Açıklama'];
+    const rows = lines.map((l) => [l.kod, l.ad, l.ureticiKodu, M.formatQty(l.miktar), l.birim, l.aciklama.replace(/\s+/g, ' ')]);
     return [head, ...rows].map((r) => r.map((c) => String(c == null ? '' : c).replace(/\t/g, ' ')).join('\t')).join('\n');
   }
 
@@ -1440,13 +1377,13 @@ const BomxEditor = (() => {
     const library = app().state.library;
     const m = U.modal(`
       <h2>Yapıştırarak ekle <button type="button" class="icon-btn sm x" data-close>×</button></h2>
-      <p class="field-help">Excel'den kod ve miktar sütunlarını kopyalayıp buraya yapıştırın ya da her satıra bir kalem yazın: <code>PE01 2</code>, <code>2 x V31</code>, <code>LS01;4;not</code>. Kodlar kütüphanede aranır; başlık satırı atlanır.</p>
-      <textarea id="paText" class="field-input paste-area" placeholder="KOD&#9;MİKTAR&#10;PE01&#9;2&#10;V31&#9;4">${esc(initial || '')}</textarea>
+      <p class="field-help">Excel'den stok kodu ve adet sütunlarını kopyalayıp buraya yapıştırın ya da her satıra bir kalem yazın: <code>PE01 2</code>, <code>2 x V31</code>, <code>LS01;4</code>. Kodlar kütüphanede aranır; başlık satırı atlanır.</p>
+      <textarea id="paText" class="field-input paste-area" placeholder="STOK KODU&#9;ADET&#10;PE01&#9;2&#10;V31&#9;4">${esc(initial || '')}</textarea>
       <div class="field-row">
         <div class="field"><label for="paSection">Eklenecek bölüm</label><select id="paSection" class="field-input">${sectionOptions(activeSectionId())}<option value="__new">+ Yeni bölüm…</option></select></div>
         <div class="field"><label for="paMissing">Kütüphanede olmayan kodlar</label><select id="paMissing" class="field-input"><option value="free">Serbest kalem olarak ekle</option><option value="skip">Atla</option></select></div>
       </div>
-      <label class="check-inline"><input type="checkbox" id="paMerge" checked> Bölümde zaten olan komponentin miktarını artır</label>
+      <label class="check-inline"><input type="checkbox" id="paMerge" checked> Bölümde zaten olan komponentin adedini artır</label>
       <div id="paPreview" class="scroll"></div>
       <div class="modal-actions"><span class="left muted" id="paSummary"></span><button type="button" class="btn" data-close>Vazgeç</button><button type="submit" class="btn btn-primary" id="paSubmit">Ekle</button></div>`, {
       size: 'wide',
@@ -1489,7 +1426,7 @@ const BomxEditor = (() => {
         E.activeSection = sec;
         setSelection(newIds);
         if (newIds[0]) reveal(newIds[0]);
-        U.toast(`${added} kalem eklendi${increased ? `, ${increased} kalemin miktarı arttı` : ''}`);
+        U.toast(`${added} kalem eklendi${increased ? `, ${increased} kalemin adedi arttı` : ''}`);
       }
     });
     const text = m.el.querySelector('#paText');
@@ -1501,7 +1438,7 @@ const BomxEditor = (() => {
       m.el.querySelector('#paSummary').textContent = rows.length
         ? `${rows.length} satır · ${found} kütüphanede${free ? ` · ${free} ${missing === 'free' ? 'serbest kalem olacak' : 'atlanacak'}` : ''}`
         : '';
-      m.el.querySelector('#paPreview').innerHTML = rows.length ? `<table class="mini-table"><thead><tr><th>Durum</th><th>Kod</th><th>Ad</th><th class="num">Miktar</th></tr></thead><tbody>${rows.slice(0, 300).map((r) => `<tr>
+      m.el.querySelector('#paPreview').innerHTML = rows.length ? `<table class="mini-table"><thead><tr><th>Durum</th><th>Stok Kodu</th><th>Tanım</th><th class="num">Adet</th></tr></thead><tbody>${rows.slice(0, 300).map((r) => `<tr>
         <td>${r.component ? '<span class="ok-text">✓ kütüphanede</span>' : missing === 'free' ? '<span class="warn-text">serbest kalem</span>' : '<span class="muted">atlanacak</span>'}</td>
         <td><b>${esc(r.kod)}</b></td><td>${esc(r.ad)}</td><td class="num">${esc(M.formatQty(r.miktar))}</td></tr>`).join('')}</tbody></table>` : '<div class="dk-empty">Önizleme burada görünür</div>';
     };
@@ -1516,37 +1453,32 @@ const BomxEditor = (() => {
     U.modal(`
       <h2>Serbest kalem</h2>
       <p class="field-help">Kütüphanede olmayan kalem (işçilik, nakliye, özel parça). İsterseniz kütüphaneye de eklenir.</p>
-      <div class="field-row"><div class="field"><label for="flKod">Kod <span class="req">*</span></label><input id="flKod" class="field-input" autocomplete="off" placeholder="MONTAJ"></div>
+      <div class="field-row"><div class="field"><label for="flKod">Stok kodu <span class="req">*</span></label><input id="flKod" class="field-input" autocomplete="off" placeholder="MONTAJ"></div>
       <div class="field"><label for="flBolum">Bölüm</label><select id="flBolum" class="field-input">${sectionOptions(activeSectionId())}</select></div></div>
-      <div class="field"><label for="flAd">Ad <span class="req">*</span></label><input id="flAd" class="field-input" autocomplete="off" placeholder="Montaj işçiliği"></div>
-      <div class="field-row three">
-        <div class="field"><label for="flMiktar">Miktar</label><input id="flMiktar" class="field-input" value="1"></div>
+      <div class="field"><label for="flAd">Tanım <span class="req">*</span></label><input id="flAd" class="field-input" autocomplete="off" placeholder="Montaj işçiliği"></div>
+      <div class="field"><label for="flModel">Model kodu</label><input id="flModel" class="field-input" autocomplete="off"></div>
+      <div class="field-row">
+        <div class="field"><label for="flMiktar">Adet</label><input id="flMiktar" class="field-input" value="1"></div>
         <div class="field"><label for="flBirim">Birim</label><input id="flBirim" class="field-input" value="${esc(s.varsayilanBirim)}" list="flUnits"><datalist id="flUnits">${s.birimler.map((u) => `<option value="${esc(u)}">`).join('')}</datalist></div>
-        <div class="field"><label for="flFiyat">Birim fiyat</label><div class="input-group"><input id="flFiyat" class="field-input" placeholder="0,00"><select id="flPara" class="field-input" style="width:76px;flex:none">${s.paraBirimleri.map((c) => `<option${c === s.varsayilanParaBirimi ? ' selected' : ''}>${c}</option>`).join('')}</select></div></div>
       </div>
-      <div class="field-row"><div class="field"><label for="flUretici">Üretici</label><input id="flUretici" class="field-input"></div><div class="field"><label for="flTedarikci">Tedarikçi</label><input id="flTedarikci" class="field-input"></div></div>
-      <div class="field"><label for="flNot">Not</label><input id="flNot" class="field-input"></div>
+      <div class="field"><label for="flAciklama">Açıklama</label><input id="flAciklama" class="field-input"></div>
       <label class="check-inline"><input type="checkbox" id="flLib"> Kütüphaneye de ekle</label>
       <div class="field-error" id="flError"></div>
       <div class="modal-actions"><button type="button" class="btn" data-close>Vazgeç</button><button type="submit" class="btn btn-primary">Ekle</button></div>`, {
       onSubmit: async (e, m) => {
         const v = (id) => m.el.querySelector(`#${id}`).value.trim();
         const fields = {
-          kod: v('flKod'), ad: v('flAd'), miktar: M.parseNumber(v('flMiktar')), birim: v('flBirim'),
-          fiyat: v('flFiyat') ? M.parseNumber(v('flFiyat')) : null, paraBirimi: v('flPara'),
-          uretici: v('flUretici'), tedarikci: v('flTedarikci'), not: v('flNot')
+          kod: v('flKod'), ad: v('flAd'), ureticiKodu: v('flModel'), miktar: M.parseNumber(v('flMiktar')), birim: v('flBirim'), aciklama: v('flAciklama')
         };
         const err = (t) => { m.el.querySelector('#flError').textContent = t; };
-        if (!fields.kod || !fields.ad) return err('Kod ve ad gerekli');
-        if (!(fields.miktar > 0)) return err('Miktar sıfırdan büyük olmalı');
-        if (v('flFiyat') && fields.fiyat === null) return err('Fiyat sayı olmalı');
+        if (!fields.kod || !fields.ad) return err('Stok kodu ve tanım gerekli');
+        if (!(fields.miktar > 0)) return err('Adet sıfırdan büyük olmalı');
         const sec = v('flBolum');
         if (m.el.querySelector('#flLib').checked) {
-          const res = await app().saveComponents([{ kod: fields.kod, ad: fields.ad, birim: fields.birim, fiyat: fields.fiyat, paraBirimi: fields.paraBirimi, uretici: fields.uretici, tedarikci: fields.tedarikci }]);
+          const res = await app().saveComponents([{ kod: fields.kod, ad: fields.ad, ureticiKodu: fields.ureticiKodu, birim: fields.birim, aciklama: fields.aciklama }]);
           if (!res.ok) return err(res.errors.map((x) => x.errors.join(', ')).join(' · '));
           m.close();
           const id = addComponent(res.saved[0], fields.miktar, { sectionId: sec, merge: false });
-          if (fields.not) updateLine(id, { not: fields.not });
           setSelection([id]);
           return undefined;
         }
@@ -1657,7 +1589,6 @@ const BomxEditor = (() => {
   /* ─── Bağlantılar ─────────────────────────────────────── */
 
   function init() {
-    E.columns = U.pref('sutunlar', M.DEFAULT_COLUMNS.slice());
     bindTable();
     U.$('btnUndo').addEventListener('click', undo);
     U.$('btnRedo').addEventListener('click', redo);
@@ -1672,9 +1603,9 @@ const BomxEditor = (() => {
       E.dirty = true;
       saveNow().then(() => U.toast(`Kaydedildi: BOM/projeler/${E.project ? E.project.id : ''}`));
     });
-    U.$('btnColumns').addEventListener('click', (e) => {
-      const r = e.currentTarget.getBoundingClientRect();
-      columnMenu(r.left, r.bottom + 4);
+    U.$('bomLang').addEventListener('click', (e) => {
+      const b = e.target.closest('[data-lang]');
+      if (b) setLanguage(b.dataset.lang);
     });
     U.$('btnCollapseAll').addEventListener('click', () => {
       if (!E.project) return;
@@ -1736,7 +1667,6 @@ const BomxEditor = (() => {
     mergeDuplicates,
     removeZero,
     addLineToLibrary,
-    writeLineToLibrary,
     addSection,
     renameSection,
     moveSection,
@@ -1744,6 +1674,7 @@ const BomxEditor = (() => {
     setActiveSection,
     setView,
     setMeta,
+    setLanguage,
     bumpRevision,
     dropRevision,
     renameProject,
@@ -1758,7 +1689,6 @@ const BomxEditor = (() => {
     openPasteDialog,
     openFreeLineDialog,
     copySelection,
-    columnMenu,
     DRAG_COMPONENT,
     DRAG_LINES
   };

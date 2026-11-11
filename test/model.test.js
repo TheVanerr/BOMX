@@ -31,12 +31,8 @@ test('sayılar Türkçe ve İngilizce yazımla okunur', () => {
 });
 
 test('sayılar Türkçe biçimde yazılır', () => {
-  assert.equal(M.formatAmount(1234.5), '1.234,50');
   assert.equal(M.formatQty(2), '2');
   assert.equal(M.formatQty(2.5), '2,5');
-  assert.equal(M.formatPrice(0.0125), '0,0125');
-  assert.equal(M.formatMoney(12.5, 'EUR'), '12,50 €');
-  assert.equal(M.formatMoney(12.5, 'TRY', { code: true }), '12,50 TRY');
   assert.equal(M.csvNumber(1234.5), '1234,5');
 });
 
@@ -55,11 +51,11 @@ test('proje adı seri no-müşteri-model olur, dosya adında yasak işaretler te
 /* ─── Komponentler ──────────────────────────────────────── */
 
 test('komponent alanları temizlenir, kod tekrarı ve hatalı bağlantı bildirilir', () => {
-  const c = M.normalizeComponent({ kod: ' PE01 ', ad: 'Pompa  Motoru', fiyat: '1.250,00', paraBirimi: 'tl', favori: 'evet', teslimSuresi: '14' });
+  const c = M.normalizeComponent({ kod: ' PE01 ', ad: 'Pompa  Motoru', fiyat: '1.250,00', paraBirimi: 'EUR', favori: 'evet', teslimSuresi: '14' });
   assert.equal(c.kod, 'PE01');
   assert.equal(c.ad, 'Pompa Motoru');
-  assert.equal(c.fiyat, 1250);
-  assert.equal(c.paraBirimi, 'TRY');
+  assert.equal('fiyat' in c, false, 'eski kayıttaki fiyat okunurken düşer');
+  assert.equal('paraBirimi' in c, false);
   assert.equal(c.favori, true);
   assert.equal(c.teslimSuresi, 14);
   assert.match(c.id, /^[0-9a-f]{12}$/);
@@ -100,31 +96,53 @@ test('komponent kimliği 16 parçadan birine düşer; parça birleşmesi kayıt 
 
 /* ─── Kalemler ve toplamlar ─────────────────────────────── */
 
-test('kalem kütüphaneden alınır, tutar miktar × fiyat × (1 - iskonto) olur', () => {
-  const line = M.lineFromComponent({ id: 'c1', kod: 'PE01', ad: 'Pompa', fiyat: 100, paraBirimi: 'EUR', birim: 'Adet' }, 3, 's1');
+test('kalem kütüphaneden alınır; açıklamaya iç notlar girmez, fiyat taşınmaz', () => {
+  const line = M.lineFromComponent({ id: 'c1', kod: 'PE01', ad: 'Pompa', ureticiKodu: 'XZS50', birim: 'Adet', fiyat: 100, paraBirimi: 'EUR',
+    aciklama: 'Paslanmaz pompa, 2,2 kW\nNot: etiketten doğrulanmalı\nKullanım: KBN 1650\nKomple: 07 1\nKaynak (web): ornek.com' }, 3, 's1');
   assert.equal(line.komponentId, 'c1');
   assert.equal(line.kod, 'PE01');
-  assert.equal(M.lineAmount(line), 300);
-  assert.equal(M.lineAmount(Object.assign({}, line, { iskonto: 10 })), 270);
-  assert.equal(M.lineAmount(Object.assign({}, line, { fiyat: null })), null);
+  assert.equal(line.ureticiKodu, 'XZS50');
+  assert.equal(line.aciklama, 'Paslanmaz pompa, 2,2 kW');
+  assert.equal(M.normalizeLine(Object.assign({}, line, { fiyat: 5, iskonto: 10 })).fiyat, undefined);
+  assert.deepEqual(M.libraryDiff(line, M.normalizeComponent({ id: 'c1', kod: 'PE01', ad: 'Pompa', ureticiKodu: 'XZS50', aciklama: 'Paslanmaz pompa, 2,2 kW\nKullanım: başka makine' })), [], 'iç not değişince kalem farklı sayılmaz');
+  const changed = M.normalizeComponent({ id: 'c1', kod: 'PE01', ad: 'Pompa', ureticiKodu: 'XZS50-X', aciklama: 'Yeni açıklama' });
+  assert.deepEqual(M.libraryDiff(line, changed), ['ureticiKodu', 'aciklama']);
+  assert.equal(M.refreshFromLibrary(line, changed).aciklama, 'Yeni açıklama');
 });
 
-test('toplam para birimi başına tutulur, kurla rapor para birimine çevrilir', () => {
+test('malzeme listesinin sütunları sabittir: fotoğraf, stok kodu, tanım, model kodu, adet, açıklama', () => {
+  assert.deepEqual(M.COLUMNS.map((c) => c.key), ['foto', 'kod', 'ad', 'ureticiKodu', 'miktar', 'aciklama']);
+  assert.deepEqual(M.COLUMNS.map((c) => M.docText('tr')[c.doc]), ['Fotoğraf', 'Stok Kodu', 'Tanım', 'Model Kodu', 'Adet', 'Açıklama']);
+  assert.equal(M.qtyText({ miktar: 2, birim: 'Adet' }), '2');
+  assert.equal(M.qtyText({ miktar: 12.5, birim: 'm' }), '12,5 m');
+});
+
+test('açıklama belgenin dilinde gelir; o dilde yoksa Türkçesi yazar', () => {
+  const c = M.normalizeComponent({ id: 'c1', kod: 'A', ad: 'A', aciklama: 'Pompa\nİlgili kod: 10 1\nAlternatif: X', aciklamaEn: 'Pump', aciklamaDe: '' });
+  const line = M.lineFromComponent(c, 1, 's1');
+  assert.equal(line.aciklama, 'Pompa', 'iç notlar girmez');
+  assert.equal(M.lineDescription(line, 'tr'), 'Pompa');
+  assert.equal(M.lineDescription(line, 'en'), 'Pump');
+  assert.equal(M.lineDescription(line, 'de'), 'Pompa');
+  assert.deepEqual(M.libraryDiff(line, Object.assign({}, c, { aciklamaDe: 'Pumpe' })), ['aciklamaDe']);
+  const p = project([Object.assign({}, line, { id: 'l1', bolum: 's1' })]);
+  assert.equal(M.projectToCsvRows(p, 'en')[1][5], 'Pump');
+  assert.equal(M.docSafe('−40…+120 °C, ≤100 V, 10 kΩ'), '-40…+120 °C, <=100 V, 10 kohm', 'PDF yazı tipinde olmayan işaretler');
+  assert.equal(M.revisionNote({ rev: '00', aciklama: 'İlk yayın' }, M.docText('en')), 'First issue');
+  assert.equal(M.revisionNote({ rev: '00', aciklama: 'Müşteri onayı' }, M.docText('en')), 'Müşteri onayı');
+  assert.equal(M.normalizeOutput({}).kapak, true, 'kapak varsayılan olarak açık');
+  assert.equal(M.normalizeOutput({ kapak: false }).kapak, false);
+  for (const [lang] of M.DOC_LANGS) for (const key of ['docType', 'docTypeValue', 'pages', 'title']) assert.ok(M.docText(lang)[key], `${lang}.${key}`);
+});
+
+test('özet kalem sayısını ve adet birimindeki toplamı verir', () => {
   const p = project([
-    { id: 'l1', bolum: 's1', kod: 'A', ad: 'A', miktar: 2, fiyat: 100, paraBirimi: 'EUR' },
-    { id: 'l2', bolum: 's1', kod: 'B', ad: 'B', miktar: 1, fiyat: 500, paraBirimi: 'TRY' },
-    { id: 'l3', bolum: 's2', kod: 'C', ad: 'C', miktar: 4, fiyat: null, paraBirimi: 'TRY', birim: 'm' }
-  ], { paraBirimi: 'TRY', kurlar: { EUR: 36 } });
-  const t = M.projectTotals(p);
-  assert.deepEqual(t.byCurrency, { EUR: 200, TRY: 500 });
-  assert.equal(t.converted, 200 * 36 + 500);
-  assert.equal(t.missingPrice, 1);
-  assert.equal(t.pieces, 3, 'metre adetle toplanmaz');
-  const eur = M.summarize(p.kalemler, 'EUR', { EUR: 36 });
-  assert.equal(M.round(eur.converted, 4), M.round(200 + 500 / 36, 4));
-  const noRate = M.summarize(p.kalemler, 'TRY', {});
-  assert.equal(noRate.converted, null);
-  assert.deepEqual(noRate.missingRates, ['EUR']);
+    { id: 'l1', bolum: 's1', kod: 'A', ad: 'A', miktar: 2, kategori: 'Pompa' },
+    { id: 'l2', bolum: 's1', kod: 'B', ad: 'B', miktar: 1, kategori: 'Pompa' },
+    { id: 'l3', bolum: 's2', kod: 'C', ad: 'C', miktar: 4, birim: 'm', kategori: 'Kablo' }
+  ]);
+  assert.deepEqual(M.projectTotals(p), { count: 3, pieces: 3 });
+  assert.deepEqual(M.categoryBreakdown(p).map((r) => [r.kategori, r.count, r.pieces]), [['Pompa', 2, 3], ['Kablo', 1, 0]]);
 });
 
 test('numaralar bölüm sırasıyla verilir: tek bölümde 1, 2; çok bölümde 1.1, 2.1', () => {
@@ -147,9 +165,9 @@ test('bilinmeyen bölümdeki kalem ilk bölüme geçer, bölümsüz projeye Gene
 
 test('satın alma listesi aynı komponenti bölümler arasında toplar, tedarikçiye göre gruplar', () => {
   const p = project([
-    { id: 'l1', bolum: 's1', komponentId: 'c1', kod: 'A', ad: 'A', miktar: 2, fiyat: 10, tedarikci: 'Festo', referans: 'V31' },
-    { id: 'l2', bolum: 's2', komponentId: 'c1', kod: 'A', ad: 'A', miktar: 3, fiyat: 10, tedarikci: 'Festo', referans: 'V32, V31' },
-    { id: 'l3', bolum: 's2', kod: 'B', ad: 'B', miktar: 1, fiyat: 5 }
+    { id: 'l1', bolum: 's1', komponentId: 'c1', kod: 'A', ad: 'A', miktar: 2, tedarikci: 'Festo', referans: 'V31' },
+    { id: 'l2', bolum: 's2', komponentId: 'c1', kod: 'A', ad: 'A', miktar: 3, tedarikci: 'Festo', referans: 'V32, V31' },
+    { id: 'l3', bolum: 's2', kod: 'B', ad: 'B', miktar: 1 }
   ]);
   const groups = M.purchaseList(p);
   assert.deepEqual(groups.map((g) => g.tedarikci), ['Festo', '']);
@@ -157,34 +175,31 @@ test('satın alma listesi aynı komponenti bölümler arasında toplar, tedarik�
   assert.equal(groups[0].items[0].miktar, 5);
   assert.equal(groups[0].items[0].referans, 'V31, V32');
   assert.deepEqual(groups[0].items[0].bolumler, ['Elektrik', 'Pnömatik']);
-  assert.equal(groups[0].totals.byCurrency.TRY, 50);
 });
 
 /* ─── Kontrol ───────────────────────────────────────────── */
 
-test('kontrol eksik miktarı, fiyatı, kuru, kütüphane farkını, tekrarı ve referansı bulur', () => {
+test('kontrol eksik adedi, kütüphane farkını, tekrarı ve referansı bulur; fiyat sormaz', () => {
   const library = lib([
-    { id: 'c1', kod: 'PE01', ad: 'Pompa', fiyat: 120, paraBirimi: 'EUR' },
-    { id: 'c2', kod: 'V31', ad: 'Vana', fiyat: 5, pasif: true },
+    { id: 'c1', kod: 'PE01', ad: 'Pompa yeni' },
+    { id: 'c2', kod: 'V31', ad: 'Vana', pasif: true },
     { id: 'c3', kod: 'LS01', ad: 'Seviye' }
   ]);
   const p = project([
-    { id: 'l1', bolum: 's1', komponentId: 'c1', kod: 'PE01', ad: 'Pompa', miktar: 2, fiyat: 100, paraBirimi: 'EUR', referans: 'PE01' },
-    { id: 'l2', bolum: 's1', komponentId: 'c1', kod: 'PE01', ad: 'Pompa', miktar: 1, fiyat: 100, paraBirimi: 'EUR', referans: 'PE01' },
-    { id: 'l3', bolum: 's1', komponentId: 'c2', kod: 'V31', ad: 'Vana', miktar: 0, fiyat: 5 },
-    { id: 'l4', bolum: 's1', komponentId: 'silindi', kod: 'X9', ad: 'Eski', miktar: 1, fiyat: 1 },
+    { id: 'l1', bolum: 's1', komponentId: 'c1', kod: 'PE01', ad: 'Pompa', miktar: 2, referans: 'PE01' },
+    { id: 'l2', bolum: 's1', komponentId: 'c1', kod: 'PE01', ad: 'Pompa', miktar: 1, referans: 'PE01' },
+    { id: 'l3', bolum: 's1', komponentId: 'c2', kod: 'V31', ad: 'Vana', miktar: 0 },
+    { id: 'l4', bolum: 's1', komponentId: 'silindi', kod: 'X9', ad: 'Eski', miktar: 1 },
     { id: 'l5', bolum: 's1', kod: 'LS01', ad: 'Seviye', miktar: 1 },
-    { id: 'l6', bolum: 's1', kod: 'İŞÇİLİK', ad: 'Montaj', miktar: 1, fiyat: 1000 }
-  ], { kurlar: {} });
+    { id: 'l6', bolum: 's1', kod: 'İŞÇİLİK', ad: 'Montaj', miktar: 1 }
+  ]);
   const checks = M.checkProject(p, library);
   const find = (re) => checks.find((c) => re.test(c.text));
-  assert.equal(find(/Miktarı girilmemiş/).level, 'error');
-  assert.deepEqual(find(/Miktarı girilmemiş/).lines, ['l3']);
-  assert.equal(find(/Miktarı girilmemiş/).fix.kind, 'removeZero');
-  assert.ok(find(/Fiyatı girilmemiş 1 kalem/));
-  assert.equal(find(/EUR kuru girilmemiş/).level, 'error');
-  assert.deepEqual(find(/Kütüphaneden farklı fiyat/).lines, ['l1', 'l2']);
-  assert.equal(find(/Kütüphaneden farklı fiyat/).fix.kind, 'refresh');
+  assert.equal(find(/Adedi girilmemiş/).level, 'error');
+  assert.deepEqual(find(/Adedi girilmemiş/).lines, ['l3']);
+  assert.equal(find(/Adedi girilmemiş/).fix.kind, 'removeZero');
+  assert.deepEqual(find(/Kütüphaneden farklı tanım/).lines, ['l1', 'l2']);
+  assert.equal(find(/Kütüphaneden farklı tanım/).fix.kind, 'refresh');
   assert.ok(find(/Pasif/));
   assert.deepEqual(find(/silinmiş/).lines, ['l4']);
   assert.deepEqual(find(/bağlanabilir/).lines, ['l5']);
@@ -192,35 +207,36 @@ test('kontrol eksik miktarı, fiyatı, kuru, kütüphane farkını, tekrarı ve 
   assert.equal(find(/tekrar eden/).fix.kind, 'merge');
   assert.ok(find(/PE01 referansı 2 kalemde/));
   assert.ok(find(/"Pnömatik" bölümü boş/));
-  assert.ok(find(/Fiyatı girilmemiş/).level === 'warn');
+  assert.equal(find(/fiyat|kur\b/i), undefined);
 });
 
 test('boş liste ve revizyon açıklaması kontrolü', () => {
   const empty = project([]);
   assert.match(M.checkProject(empty, new Map())[0].text, /boş/);
-  const p = project([{ id: 'l', bolum: 's1', kod: 'A', ad: 'A', miktar: 1, fiyat: 1 }], { rev: '01', revizyonlar: [{ rev: '00', aciklama: 'İlk yayın' }, { rev: '01' }] });
+  const p = project([{ id: 'l', bolum: 's1', kod: 'A', ad: 'A', miktar: 1 }], { rev: '01', revizyonlar: [{ rev: '00', aciklama: 'İlk yayın' }, { rev: '01' }] });
   assert.ok(M.checkProject(p, new Map()).some((c) => /Rev\. 01 açıklaması/.test(c.text)));
 });
 
 /* ─── Revizyon farkı ────────────────────────────────────── */
 
-test('revizyon farkı komponent bazında eklenen, çıkarılan ve değişeni bulur', () => {
+test('revizyon farkı komponent bazında eklenen, çıkarılan ve adedi değişeni bulur', () => {
   const old = [
-    { kod: 'A', ad: 'A', komponentId: 'a', miktar: 2, fiyat: 10 },
-    { kod: 'B', ad: 'B', komponentId: 'b', miktar: 1, fiyat: 5 },
-    { kod: 'C', ad: 'C', komponentId: 'c', miktar: 1, fiyat: 5 }
+    { kod: 'A', ad: 'A', komponentId: 'a', miktar: 2 },
+    { kod: 'B', ad: 'B', komponentId: 'b', miktar: 1 },
+    { kod: 'C', ad: 'C', komponentId: 'c', miktar: 1 }
   ].map(M.normalizeLine);
   const now = [
-    { kod: 'A', ad: 'A', komponentId: 'a', miktar: 1, fiyat: 10 },
-    { kod: 'A', ad: 'A', komponentId: 'a', miktar: 2, fiyat: 10 },
-    { kod: 'B', ad: 'B', komponentId: 'b', miktar: 1, fiyat: 6 },
-    { kod: 'D', ad: 'D', miktar: 1, fiyat: 1 }
+    { kod: 'A', ad: 'A', komponentId: 'a', miktar: 1 },
+    { kod: 'A', ad: 'A', komponentId: 'a', miktar: 2 },
+    { kod: 'B', ad: 'B', komponentId: 'b', miktar: 1 },
+    { kod: 'D', ad: 'D', miktar: 1 }
   ].map(M.normalizeLine);
   const d = M.diffBoms(old, now);
   assert.deepEqual(d.added.map((x) => x.kod), ['D']);
   assert.deepEqual(d.removed.map((x) => x.kod), ['C']);
-  assert.deepEqual(d.changed.map((x) => `${x.kod}:${x.qty}:${x.price}`), ['A:true:false', 'B:false:true']);
+  assert.deepEqual(d.changed.map((x) => x.kod), ['A']);
   assert.equal(d.changed[0].yeni.miktar, 3);
+  assert.equal(d.same, 1);
 });
 
 test('revizyon numarası iki haneli ilerler', () => {
@@ -307,19 +323,19 @@ test('saati geri olan cihazın yeni düzenlemesi belgedeki daha ileri zamanlı e
   assert.equal(M.mergeProjects(next, other).kalemler[0].miktar, 9);
   assert.equal(M.laterStamp('2026-01-01T00:00:00.000Z', '2026-01-02T00:00:00.000Z'), '2026-01-02T00:00:00.001Z');
   assert.equal(M.laterStamp('2026-01-03T00:00:00.000Z', '2026-01-02T00:00:00.000Z'), '2026-01-03T00:00:00.000Z');
-  let s = M.setSetting(M.normalizeSettings({ zaman: { kurlar: '2026-06-01T00:00:00.000Z' } }), 'kurlar', { EUR: 40 }, '2026-02-01T00:00:00.000Z');
-  assert.ok(s.zaman.kurlar > '2026-06-01T00:00:00.000Z');
-  s = M.setSetting(s, 'kurlar', { EUR: 40 }, '2026-07-01T00:00:00.000Z');
-  assert.ok(s.zaman.kurlar < '2026-07-01T00:00:00.000Z', 'aynı değer damgayı değiştirmez');
+  let s = M.setSetting(M.normalizeSettings({ zaman: { birimler: '2026-06-01T00:00:00.000Z' } }), 'birimler', ['Kutu'], '2026-02-01T00:00:00.000Z');
+  assert.ok(s.zaman.birimler > '2026-06-01T00:00:00.000Z');
+  s = M.setSetting(s, 'birimler', ['Kutu'], '2026-07-01T00:00:00.000Z');
+  assert.ok(s.zaman.birimler < '2026-07-01T00:00:00.000Z', 'aynı değer damgayı değiştirmez');
 });
 
 test('ayarlar anahtar başına birleşir', () => {
   let a = M.normalizeSettings({});
   let b = M.normalizeSettings({});
-  a = M.setSetting(a, 'kurlar', { EUR: 36 }, '2026-01-02T00:00:00.000Z');
+  a = M.setSetting(a, 'kategoriler', ['Pompa'], '2026-01-02T00:00:00.000Z');
   b = M.setSetting(b, 'birimler', ['Adet', 'Kutu'], '2026-01-03T00:00:00.000Z');
   const merged = M.mergeSettings(a, b);
-  assert.equal(merged.kurlar.EUR, 36);
+  assert.deepEqual(merged.kategoriler, ['Pompa']);
   assert.deepEqual(merged.birimler, ['Adet', 'Kutu']);
   assert.deepEqual(M.mergeSettings(b, a), merged);
 });
@@ -345,7 +361,7 @@ test('CSV tırnak, hücre içi satır sonu ve ayırıcıyı tanır', () => {
 });
 
 test('başlıklar komponent alanlarına eşlenir; P&PX KODListesi.csv biçimi doğrudan okunur', () => {
-  assert.deepEqual(M.guessColumns(['Stok Kodu', 'Malzeme Adı', 'Marka', 'Birim Fiyatı', 'Döviz', 'Açıklama']), ['kod', 'ad', 'uretici', 'fiyat', 'paraBirimi', 'aciklama']);
+  assert.deepEqual(M.guessColumns(['Stok Kodu', 'Malzeme Adı', 'Marka', 'Birim Fiyatı', 'Döviz', 'Açıklama']), ['kod', 'ad', 'uretici', '', '', 'aciklama'], 'fiyat ve döviz sütunu alınmaz');
   const ppx = M.tableToComponents(M.parseCsv('KOD;AÇIKLAMA\nPE01;Ön Yıkama Pompa Motoru\nV07;Hava; ana valf'));
   assert.equal(ppx.hasHeader, true);
   assert.deepEqual(ppx.columns, ['kod', 'ad']);
@@ -356,9 +372,9 @@ test('başlıklar komponent alanlarına eşlenir; P&PX KODListesi.csv biçimi do
 });
 
 test('aktarma planı yeni, güncellenecek, değişmeyen ve hatalı satırları ayırır', () => {
-  const library = [M.normalizeComponent({ id: 'c1', kod: 'PE01', ad: 'Pompa', fiyat: 100, uretici: 'Grundfos' })];
+  const library = [M.normalizeComponent({ id: 'c1', kod: 'PE01', ad: 'Pompa', kategori: 'Eski', uretici: 'Grundfos' })];
   const items = [
-    { row: 2, fields: { kod: 'pe01', ad: 'Pompa', fiyat: '120', uretici: '' } },
+    { row: 2, fields: { kod: 'pe01', ad: 'Pompa', kategori: 'Yeni', uretici: '' } },
     { row: 3, fields: { kod: 'V31', ad: 'Vana' } },
     { row: 4, fields: { kod: 'V31', ad: 'Vana tekrar' } },
     { row: 5, fields: { ad: 'Kodsuz' } },
@@ -368,23 +384,23 @@ test('aktarma planı yeni, güncellenecek, değişmeyen ve hatalı satırları a
   assert.equal(merge.add.length, 1);
   assert.equal(merge.add[0].kod, 'V31');
   assert.equal(merge.update.length, 1);
-  assert.deepEqual(merge.update[0].changes, ['fiyat']);
+  assert.deepEqual(merge.update[0].changes, ['kategori']);
   assert.equal(merge.update[0].after.uretici, 'Grundfos', 'boş hücre var olanı silmez');
   assert.equal(merge.repeated, 1);
   assert.equal(merge.invalid.length, 2);
   const replace = M.planImport(items, library, 'replace');
-  assert.deepEqual(replace.update[0].changes, ['uretici', 'fiyat']);
+  assert.deepEqual(replace.update[0].changes, ['kategori', 'uretici']);
   const add = M.planImport(items, library, 'add');
   assert.equal(add.update.length, 0);
   assert.equal(add.same, 1);
 });
 
 test('kütüphane CSV olarak verilip geri okunduğunda aynı kalır', () => {
-  const list = [M.normalizeComponent({ kod: 'PE01', ad: 'Pompa; 2,2 kW', fiyat: 1250.5, paraBirimi: 'EUR', favori: true, aciklama: 'iki\nsatır' })];
+  const list = [M.normalizeComponent({ kod: 'PE01', ad: 'Pompa; 2,2 kW', ureticiKodu: 'XZS50-32', favori: true, aciklama: 'iki\nsatır' })];
   const parsed = M.tableToComponents(M.parseCsv(M.toCsv(M.libraryToRows(list))));
   const plan = M.planImport(parsed.items, [], 'merge');
   const back = plan.add[0];
-  for (const key of ['kod', 'ad', 'fiyat', 'paraBirimi', 'favori', 'aciklama']) assert.deepEqual(back[key], list[0][key], key);
+  for (const key of ['kod', 'ad', 'ureticiKodu', 'favori', 'aciklama']) assert.deepEqual(back[key], list[0][key], key);
 });
 
 test('yapıştırılan satırlardan kod ve miktar çıkar', () => {
@@ -405,21 +421,23 @@ test('yapıştırmada kütüphanedeki kod "kod × miktar" sanılmaz; bitişik ya
   assert.deepEqual(rows.map((r) => `${r.kod}:${r.miktar}:${r.component ? 'k' : '-'}`), ['M8X20:1:k', 'BOX12:1:-', 'V31:2:k', 'V31:3:k']);
 });
 
-test('para birimi üç harfli koda çevrilir; geçersiz değer TRY olur (sayfaya ham metin girmez)', () => {
-  assert.equal(M.normalizeLine({ paraBirimi: 'eur' }).paraBirimi, 'EUR');
-  assert.equal(M.normalizeLine({ paraBirimi: 'TL' }).paraBirimi, 'TRY');
-  assert.equal(M.normalizeLine({ paraBirimi: '<img src=x onerror=alert(1)>' }).paraBirimi, 'TRY');
-  assert.equal(M.normalizeComponent({ paraBirimi: 'EURO' }).paraBirimi, 'TRY');
-  assert.deepEqual(Object.keys(M.normalizeProject({ kurlar: { EUR: 36, '<b>': 5 } }).kurlar), ['EUR']);
+test('eski dosyalardaki fiyat, para birimi ve kur okunurken düşer', () => {
+  const line = M.normalizeLine({ kod: 'A', ad: 'A', fiyat: 10, paraBirimi: 'EUR', iskonto: 5 });
+  for (const key of ['fiyat', 'paraBirimi', 'iskonto']) assert.equal(key in line, false, key);
+  const p = M.normalizeProject({ paraBirimi: 'EUR', kurlar: { EUR: 36 }, kurTarihi: '2026-01-01', cikti: { fiyat: true, araToplam: true } });
+  for (const key of ['paraBirimi', 'kurlar', 'kurTarihi']) assert.equal(key in p, false, key);
+  assert.equal('fiyat' in p.cikti, false);
+  const s = M.normalizeSettings({ kurlar: { EUR: 36 }, paraBirimleri: ['TRY'], raporParaBirimi: 'EUR' });
+  for (const key of ['kurlar', 'paraBirimleri', 'raporParaBirimi', 'varsayilanParaBirimi', 'kurTarihi']) assert.equal(key in s, false, key);
 });
 
 test('"değiştir" kipinde dosyadaki boş hücre kütüphanedeki değeri temizler; "güncelle" kipinde temizlemez', () => {
-  const library = [M.normalizeComponent({ id: 'c1', kod: 'PE01', ad: 'Pompa', uretici: 'Grundfos', fiyat: 100 })];
-  const table = M.tableToComponents(M.parseCsv('Kod;Ad;Marka;Fiyat\nPE01;Pompa;;120'));
+  const library = [M.normalizeComponent({ id: 'c1', kod: 'PE01', ad: 'Pompa', uretici: 'Grundfos', kategori: 'Eski' })];
+  const table = M.tableToComponents(M.parseCsv('Kod;Ad;Marka;Kategori\nPE01;Pompa;;Yeni'));
   assert.equal(table.items[0].fields.uretici, '');
   const replace = M.planImport(table.items, library, 'replace');
   assert.equal(replace.update[0].after.uretici, '');
-  assert.equal(replace.update[0].after.fiyat, 120);
+  assert.equal(replace.update[0].after.kategori, 'Yeni');
   const merge = M.planImport(table.items, library, 'merge');
   assert.equal(merge.update[0].after.uretici, 'Grundfos');
 });
@@ -440,19 +458,18 @@ test('P&PX kodları kategorisiyle komponent olur', () => {
 });
 
 test('şablon kalemleri kütüphanedeki güncel bilgiyle gelir', () => {
-  const library = lib([{ id: 'c1', kod: 'PE01', ad: 'Pompa yeni', fiyat: 150 }]);
+  const library = lib([{ id: 'c1', kod: 'PE01', ad: 'Pompa yeni' }]);
   const t = M.templateFromLines('Pompa seti', [
-    M.normalizeLine({ komponentId: 'c1', kod: 'PE01', ad: 'Pompa eski', fiyat: 100, miktar: 2, referans: 'PE01, PE02' }),
-    M.normalizeLine({ kod: 'MONTAJ', ad: 'Montaj', miktar: 1, fiyat: 500 })
+    M.normalizeLine({ komponentId: 'c1', kod: 'PE01', ad: 'Pompa eski', miktar: 2, referans: 'PE01, PE02' }),
+    M.normalizeLine({ kod: 'MONTAJ', ad: 'Montaj', miktar: 1 })
   ]);
   const lines = M.linesFromTemplate(t, library, 's9');
   assert.equal(lines[0].ad, 'Pompa yeni');
-  assert.equal(lines[0].fiyat, 150);
   assert.equal(lines[0].miktar, 2);
   assert.equal(lines[0].referans, 'PE01, PE02');
   assert.equal(lines[0].bolum, 's9');
   assert.equal(lines[1].komponentId, null);
-  assert.equal(lines[1].fiyat, 500);
+  assert.equal(lines[1].ad, 'Montaj');
   assert.notEqual(lines[0].id, t.kalemler[0].id, 'her eklemede yeni kimlik');
 });
 
@@ -463,9 +480,9 @@ test('belge yazıları üç dilde, birimler çevrilir', () => {
   assert.equal(M.unitText('Adet', 'de'), 'Stk.');
   assert.equal(M.unitText('Adet', 'tr'), 'Adet');
   assert.equal(M.statusLabel('onay', 'de'), 'Freigegeben');
-  const p = project([{ id: 'l1', bolum: 's1', kod: 'A', ad: 'A', miktar: 2, fiyat: 1.5 }]);
+  const p = project([{ id: 'l1', bolum: 's1', kod: 'A', ad: 'Tanım', ureticiKodu: 'M1', miktar: 2, aciklama: 'iki\nsatır' }, { id: 'l2', bolum: 's1', kod: 'K', ad: 'Kablo', miktar: 12.5, birim: 'm' }]);
   const rows = M.projectToCsvRows(p, 'en');
-  assert.equal(rows[0][1], 'Item');
-  assert.deepEqual(rows[1].slice(0, 4), ['Elektrik', '1.1', 'A', 'A']);
-  assert.equal(rows[1][14], '3');
+  assert.deepEqual(rows[0], ['Section', 'Stock Code', 'Definition', 'Model Code', 'Qty', 'Description']);
+  assert.deepEqual(rows[1], ['Elektrik', 'A', 'Tanım', 'M1', '2', 'iki satır']);
+  assert.equal(rows[2][4], '12,5 m');
 });

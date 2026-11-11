@@ -25,7 +25,6 @@ const BomxLibrary = (() => {
   const firstLine = (t) => String(t || '').split('\n')[0];
   const distinct = (k) => [...new Set(app().state.library.map((c) => c[k]).filter(Boolean))].sort(M.compareText);
   const categories = () => [...new Set([...app().state.settings.kategoriler, ...distinct('kategori')])];
-  const currencies = (current) => [...new Set([...app().state.settings.paraBirimleri, current || app().state.settings.varsayilanParaBirimi].filter(Boolean))];
 
   /* ─── Son aktarma ─────────────────────────────────────── */
 
@@ -188,7 +187,6 @@ const BomxLibrary = (() => {
     let list = S.query ? M.searchComponents(st.library, S.query, st.libraryIndex) : st.library.slice();
     if (S.category) list = list.filter((c) => (c.kategori || '') === (S.category === '__none' ? '' : S.category));
     if (S.filter === 'fav') list = list.filter((c) => c.favori);
-    else if (S.filter === 'noprice') list = list.filter((c) => !M.isNum(c.fiyat));
     else if (S.filter === 'unused') list = list.filter((c) => !st.usage.get(c.id));
     else if (S.filter === 'pasif') list = list.filter((c) => c.pasif);
     else if (S.filter === 'aktif') list = list.filter((c) => !c.pasif);
@@ -200,7 +198,7 @@ const BomxLibrary = (() => {
     if (!S.query || S.sort.key !== 'kod') {
       const k = S.sort.key;
       const dir = S.sort.desc ? -1 : 1;
-      const value = (c) => (k === 'kullanim' ? st.usage.get(c.id) || 0 : k === 'fiyat' ? (M.isNum(c.fiyat) ? M.convert(c.fiyat, c.paraBirimi, 'TRY', st.settings.kurlar) ?? c.fiyat : -1) : c[k] || '');
+      const value = (c) => (k === 'kullanim' ? st.usage.get(c.id) || 0 : c[k] || '');
       list.sort((a, b) => {
         const va = value(a);
         const vb = value(b);
@@ -220,19 +218,13 @@ const BomxLibrary = (() => {
         key: 'foto', width: '44px', label: 'Foto', className: 'c-foto', headTitle: 'Fotoğraf: tıklayınca büyür; eklemek için formu açın',
         cell: (c) => { const p = app().photoOf(c.id); return p ? `<img class="gt-thumb" src="${esc(p)}" alt="" loading="lazy" data-act="foto">` : ''; }
       },
-      { key: 'kod', width: '130px', label: 'Kod', sort: true, editable: true, className: 'c-kod', cell: (c) => hl(c.kod), title: (c) => c.kod },
-      { key: 'ad', width: 'minmax(240px, 2fr)', label: 'Ad', sort: true, editable: true, cell: (c) => `${hl(c.ad)}${c.pasif ? ' <span class="chip gray">pasif</span>' : ''}`, value: (c) => c.ad, title: (c) => c.ad },
+      { key: 'kod', width: '130px', label: 'Stok Kodu', sort: true, editable: true, className: 'c-kod', cell: (c) => hl(c.kod), title: (c) => c.kod },
+      { key: 'ad', width: 'minmax(240px, 2fr)', label: 'Tanım', sort: true, editable: true, cell: (c) => `${hl(c.ad)}${c.pasif ? ' <span class="chip gray">pasif</span>' : ''}`, value: (c) => c.ad, title: (c) => c.ad },
       { key: 'kategori', width: '130px', label: 'Kategori', sort: true, editable: true, className: 'c-muted', list: categories },
       { key: 'uretici', width: '120px', label: 'Üretici', sort: true, editable: true, list: () => distinct('uretici'), cell: (c) => hl(c.uretici) },
-      { key: 'ureticiKodu', width: '150px', label: 'Üretici Kodu', sort: true, editable: true, cell: (c) => hl(c.ureticiKodu), title: (c) => c.ureticiKodu },
+      { key: 'ureticiKodu', width: '170px', label: 'Model Kodu', sort: true, editable: true, cell: (c) => hl(c.ureticiKodu), title: (c) => c.ureticiKodu },
       { key: 'tedarikci', width: '130px', label: 'Tedarikçi', sort: true, editable: true, list: () => distinct('tedarikci'), cell: (c) => hl(c.tedarikci) },
       { key: 'birim', width: '62px', label: 'Birim', editable: true, className: 'c-muted', list: () => st.settings.birimler },
-      {
-        key: 'fiyat', width: '118px', label: 'Fiyat', sort: true, align: 'right', editable: true, kind: 'number',
-        value: (c) => (M.isNum(c.fiyat) ? M.formatPrice(c.fiyat) : ''),
-        cell: (c) => (M.isNum(c.fiyat) ? esc(S.edit ? M.formatPrice(c.fiyat) : M.formatMoney(c.fiyat, c.paraBirimi)) : '<span class="c-muted">—</span>')
-      },
-      S.edit ? { key: 'paraBirimi', width: '66px', label: 'Para br.', editable: true, kind: 'select', options: (c) => currencies(c.paraBirimi), className: 'c-muted' } : null,
       S.edit ? { key: 'aciklama', width: 'minmax(200px, 1.5fr)', label: 'Açıklama', editable: true, kind: 'multiline', className: 'c-muted', cell: (c) => esc(firstLine(c.aciklama)), value: (c) => c.aciklama || '', title: (c) => c.aciklama || '' } : null,
       { key: 'kullanim', width: '78px', label: 'Kullanım', sort: true, align: 'right', className: 'c-muted', cell: (c) => { const used = st.usage.get(c.id) || 0; return used ? `${used} proje` : ''; } },
       { key: 'zaman', width: '110px', label: 'Güncelleme', sort: true, className: 'c-muted', cell: (c) => esc(U.relTime(c.zaman)), title: (c) => c.zaman }
@@ -294,8 +286,6 @@ const BomxLibrary = (() => {
       <button type="button" class="btn btn-xs" data-bulk="uretici">Üretici</button>
       <button type="button" class="btn btn-xs" data-bulk="tedarikci">Tedarikçi</button>
       <button type="button" class="btn btn-xs" data-bulk="birim">Birim</button>
-      <button type="button" class="btn btn-xs" data-bulk="para">Para birimi</button>
-      <button type="button" class="btn btn-xs" data-bulk="zam">Fiyat değiştir (%)</button>
       <button type="button" class="btn btn-xs" data-bulk="fav">Favori</button>
       <button type="button" class="btn btn-xs" data-bulk="pasif">Pasif / aktif</button>
       <button type="button" class="btn btn-xs btn-danger" data-bulk="sil" title="Delete">Sil</button>
@@ -322,29 +312,6 @@ const BomxLibrary = (() => {
       case 'uretici': await setField('uretici', 'Üretici ata', 'Üretici / marka', distinct('uretici')); break;
       case 'tedarikci': await setField('tedarikci', 'Tedarikçi ata', 'Tedarikçi', distinct('tedarikci')); break;
       case 'birim': await setField('birim', 'Birim ata', 'Birim', st.settings.birimler); break;
-      case 'para': {
-        const v = await U.promptModal('Para birimi', 'Para birimi (TRY, EUR, USD…)', 'EUR', 'Uygula', { list: st.settings.paraBirimleri, validate: (t) => (/^[A-Za-z]{3}$/.test(t) ? '' : 'Üç harfli kod yazın') });
-        if (!v) return;
-        const res = await saveTracked(`${n} komponentin para birimi`, list, list.map((c) => Object.assign({}, c, { paraBirimi: v.toUpperCase() })));
-        U.toast(res.ok ? `${n} komponentin para birimi ${v.toUpperCase()} oldu (fiyatlar çevrilmedi)` : res.errors[0].errors.join(', '), res.ok ? '' : 'error');
-        break;
-      }
-      case 'zam': {
-        const priced = list.filter((c) => M.isNum(c.fiyat));
-        if (!priced.length) {
-          U.toast('Seçilenlerin fiyatı yok', 'error');
-          return;
-        }
-        const v = await U.promptModal('Fiyat değiştir', 'Yüzde (zam için 10, indirim için -5)', '10', 'Uygula', {
-          help: `${priced.length} fiyatlı komponent değişir. Projelerdeki kalemler değişmez; Kontrol sekmesi "kütüphaneden farklı fiyat" diye gösterir.`,
-          validate: (t) => (/^\s*[-+]?\d+([.,]\d+)?\s*%?\s*$/.test(t) && Math.abs(M.parseNumber(t.replace('-', ''))) < 1000 ? '' : 'Örn: 10 ya da -5')
-        });
-        if (v === null) return;
-        const k = (v.trim().startsWith('-') ? -1 : 1) * M.parseNumber(v.replace(/^[-+]/, ''));
-        const res = await saveTracked(`${priced.length} fiyat %${M.formatQty(k)}`, priced, priced.map((c) => Object.assign({}, c, { fiyat: M.round(c.fiyat * (1 + k / 100), 4) })));
-        U.toast(res.ok ? `${priced.length} komponentin fiyatı %${M.formatQty(k)} değişti` : 'Kaydedilemedi', res.ok ? '' : 'error', res.ok ? undoButton(res.entry) : undefined);
-        break;
-      }
       case 'fav': {
         const on = !list.every((c) => c.favori);
         await saveTracked(on ? `${n} komponent favorilere` : `${n} komponent favorilerden`, list, list.map((c) => Object.assign({}, c, { favori: on })));
@@ -402,15 +369,7 @@ const BomxLibrary = (() => {
     const fresh = app().state.libraryById.get(c.id);
     if (!fresh) return 'Komponent bu arada silinmiş';
     let value = text;
-    if (key === 'fiyat') {
-      const raw = text.trim();
-      if (raw === '') value = null;
-      else {
-        const n = M.parseNumber(raw);
-        if (n === null || n < 0) return `"${raw}" geçerli bir fiyat değil`;
-        value = n;
-      }
-    } else if (key === 'aciklama') {
+    if (key === 'aciklama') {
       value = M.cleanMultiline(text);
     } else {
       value = M.clean(text);
@@ -456,21 +415,19 @@ const BomxLibrary = (() => {
     const id = (k) => `${prefix}${k}`;
     const input = (k, label, opts) => {
       const o = opts || {};
-      return `<div class="field"><label for="${id(k)}">${esc(label)}${o.req ? ' <span class="req">*</span>' : ''}</label><input id="${id(k)}" class="field-input" value="${esc(c[k] == null ? '' : o.num ? (M.isNum(c[k]) ? (k === 'fiyat' ? M.formatPrice(c[k]) : String(c[k])) : '') : c[k])}"${o.list ? ` list="${id(`${k}List`)}"` : ''}${o.ph ? ` placeholder="${esc(o.ph)}"` : ''} autocomplete="off" spellcheck="false">${o.list ? `<datalist id="${id(`${k}List`)}">${o.list.map((v) => `<option value="${esc(v)}">`).join('')}</datalist>` : ''}</div>`;
+      return `<div class="field"><label for="${id(k)}">${esc(label)}${o.req ? ' <span class="req">*</span>' : ''}</label><input id="${id(k)}" class="field-input" value="${esc(c[k] == null ? '' : o.num ? (M.isNum(c[k]) ? String(c[k]) : '') : c[k])}"${o.list ? ` list="${id(`${k}List`)}"` : ''}${o.ph ? ` placeholder="${esc(o.ph)}"` : ''} autocomplete="off" spellcheck="false">${o.list ? `<datalist id="${id(`${k}List`)}">${o.list.map((v) => `<option value="${esc(v)}">`).join('')}</datalist>` : ''}</div>`;
     };
     return `
       <div class="photo-field" id="${id('photo')}"></div>
-      <div class="field-row">${input('kod', 'Kod / stok kodu', { req: true, ph: 'PE01, 10 00243…' })}${input('kategori', 'Kategori', { list: cats })}</div>
-      ${input('ad', 'Ad', { req: true, ph: 'Ön yıkama pompa motoru 2,2 kW' })}
-      <div class="field-row">${input('uretici', 'Üretici / marka', { list: distinct('uretici') })}${input('ureticiKodu', 'Üretici kodu (parça no)')}</div>
+      <div class="field-row">${input('kod', 'Stok kodu', { req: true, ph: '10 00243…' })}${input('kategori', 'Kategori', { list: cats })}</div>
+      ${input('ad', 'Tanım (bizim sistemdeki)', { req: true, ph: 'POMPA GOULDS ESHE 32-160/22 380V/50HZ' })}
+      <div class="field-row">${input('uretici', 'Üretici / marka', { list: distinct('uretici') })}${input('ureticiKodu', 'Model kodu (üreticinin tam kodu)')}</div>
       <div class="field-row">${input('tedarikci', 'Tedarikçi', { list: distinct('tedarikci') })}${input('tedarikciKodu', 'Tedarikçi kodu')}</div>
-      <div class="field-row three">
-        ${input('fiyat', 'Birim fiyat', { num: true, ph: '0,00' })}
-        <div class="field"><label for="${id('paraBirimi')}">Para birimi</label><select id="${id('paraBirimi')}" class="field-input">${currencies(c.paraBirimi).map((x) => `<option${x === (c.paraBirimi || st.settings.varsayilanParaBirimi) ? ' selected' : ''}>${esc(x)}</option>`).join('')}</select></div>
-        ${input('birim', 'Birim', { list: st.settings.birimler })}
-      </div>
-      <div class="field-row">${input('teslimSuresi', 'Teslim süresi (gün)', { num: true })}${input('link', 'Bağlantı', { ph: 'https://… (katalog, ürün sayfası)' })}</div>
+      <div class="field-row">${input('birim', 'Birim', { list: st.settings.birimler })}${input('teslimSuresi', 'Teslim süresi (gün)', { num: true })}</div>
+      ${input('link', 'Bağlantı', { ph: 'https://… (katalog, ürün sayfası)' })}
       <div class="field"><label for="${id('aciklama')}">Açıklama / teknik özellik</label><textarea id="${id('aciklama')}" class="field-input" rows="4" placeholder="Güç, gerilim, malzeme, bağlantı ölçüsü…">${esc(c.aciklama || '')}</textarea></div>
+      <div class="field"><label for="${id('aciklamaEn')}">Açıklama (EN)</label><textarea id="${id('aciklamaEn')}" class="field-input" rows="2" placeholder="İngilizce belgede görünür; boşsa Türkçesi yazar">${esc(c.aciklamaEn || '')}</textarea></div>
+      <div class="field"><label for="${id('aciklamaDe')}">Açıklama (DE)</label><textarea id="${id('aciklamaDe')}" class="field-input" rows="2" placeholder="Almanca belgede görünür; boşsa Türkçesi yazar">${esc(c.aciklamaDe || '')}</textarea></div>
       <div class="field-row">
         <label class="check-inline"><input type="checkbox" id="${id('favori')}" ${c.favori ? 'checked' : ''}> Favori (listelerde üstte)</label>
         <label class="check-inline"><input type="checkbox" id="${id('pasif')}" ${c.pasif ? 'checked' : ''}> Pasif (kullanımdan kalktı)</label>
@@ -483,17 +440,15 @@ const BomxLibrary = (() => {
       const el = root.querySelector(`#${prefix}${k}`);
       return el ? (el.type === 'checkbox' ? el.checked : el.value) : undefined;
     };
-    const raw = v('fiyat').trim();
     const lead = v('teslimSuresi').trim();
     return {
       component: M.normalizeComponent(Object.assign({}, base, {
         kod: v('kod'), ad: v('ad'), kategori: v('kategori'), uretici: v('uretici'), ureticiKodu: v('ureticiKodu'),
         tedarikci: v('tedarikci'), tedarikciKodu: v('tedarikciKodu'), birim: v('birim') || app().settings.varsayilanBirim,
-        fiyat: raw === '' ? null : M.parseNumber(raw), paraBirimi: v('paraBirimi'), teslimSuresi: lead === '' ? null : M.parseNumber(lead),
-        aciklama: v('aciklama'), link: v('link'), favori: v('favori'), pasif: v('pasif')
+        teslimSuresi: lead === '' ? null : M.parseNumber(lead),
+        aciklama: v('aciklama'), aciklamaEn: v('aciklamaEn'), aciklamaDe: v('aciklamaDe'), link: v('link'), favori: v('favori'), pasif: v('pasif')
       })),
       problems: [
-        raw !== '' && (M.parseNumber(raw) === null || M.parseNumber(raw) < 0) ? 'Fiyat geçerli bir sayı olmalı' : '',
         lead !== '' && (M.parseNumber(lead) === null || M.parseNumber(lead) < 0) ? 'Teslim süresi gün sayısı olmalı' : ''
       ].filter(Boolean)
     };
@@ -814,7 +769,7 @@ const BomxLibrary = (() => {
     skip: ['Alınmayacak', 'gray', 'Satır başındaki kutuyla aktarmaya dahil edilir']
   };
   const CLASS_TONES = { elektrik: 'blue', reduktor: 'blue', komple: 'amber', diger: 'gray' };
-  const STAGE_FIELDS = ['kod', 'ad', 'kategori', 'uretici', 'ureticiKodu', 'tedarikci', 'tedarikciKodu', 'birim', 'fiyat', 'paraBirimi', 'teslimSuresi', 'link', 'aciklama'];
+  const STAGE_FIELDS = ['kod', 'ad', 'kategori', 'uretici', 'ureticiKodu', 'tedarikci', 'tedarikciKodu', 'birim', 'teslimSuresi', 'link', 'aciklama', 'aciklamaEn', 'aciklamaDe'];
 
   /**
    * Aktarma penceresi: (tablo ise) sütun eşleştirme → düzenlenebilir önizleme → kütüphaneye yaz.
@@ -829,7 +784,7 @@ const BomxLibrary = (() => {
     // Raporların alanları tahmindir: kütüphanede olan (belki elle düzeltilmiş) kodlara varsayılan olarak dokunulmaz
     const state = {
       step: 'review', rows: source.rows || null, tables: source.tables || null, table: 0,
-      columns: null, hasHeader: undefined, headers: [], items: [], mode: classed ? 'add' : 'merge', touched: false,
+      columns: null, hasHeader: undefined, headers: [], items: [], mode: isReport ? 'add' : 'merge', touched: false,
       f: { status: '', sinif: '', q: '', kategori: '' },
       opts: Object.assign({ adKaynagi: 'erp', kullanim: true }, source.options || {}),
       statusOf: new Map(), plan: null
@@ -938,7 +893,7 @@ const BomxLibrary = (() => {
     const fieldText = (x, k) => {
       const v = x.fields[k];
       if (v === null || v === undefined) return '';
-      if (typeof v === 'number') return k === 'fiyat' ? M.formatPrice(v) : String(v);
+      if (typeof v === 'number') return String(v);
       if (typeof v === 'boolean') return v ? 'evet' : '';
       return String(v);
     };
@@ -961,7 +916,7 @@ const BomxLibrary = (() => {
       return (s.reason ? `${s.reason}` : base) + photo;
     }
 
-    const showValue = (f, v) => (f === 'fiyat' ? (M.isNum(v) ? M.formatPrice(v) : '—') : typeof v === 'boolean' ? (v ? 'evet' : 'hayır') : firstLine(v) || '—');
+    const showValue = (f, v) => (typeof v === 'boolean' ? (v ? 'evet' : 'hayır') : firstLine(v) || '—');
 
     function classChip(x) {
       if (!x.meta) return '';
@@ -984,16 +939,14 @@ const BomxLibrary = (() => {
         { key: '__durum', width: '118px', label: 'Durum', cell: statusChip, title: statusTitle },
         classed ? { key: '__tur', width: '128px', label: 'Tür', cell: classChip, title: classTitle } : null,
         photos ? { key: '__foto', width: '44px', label: 'Foto', className: 'c-foto', headTitle: 'Fotoğraf komponentle birlikte aktarılır; tıklayınca büyür', title: (x) => (x.foto ? x.fotoKaynagi || 'Fotoğraf' : ''), cell: (x) => (x.foto ? `<img class="gt-thumb" src="${esc(x.foto)}" alt="" loading="lazy" data-act="foto">` : '') } : null,
-        { key: 'kod', width: '122px', label: 'Kod', className: 'c-kod' },
-        { key: 'ad', width: 'minmax(220px, 2fr)', label: 'Ad' },
+        { key: 'kod', width: '122px', label: 'Stok Kodu', className: 'c-kod' },
+        { key: 'ad', width: 'minmax(220px, 2fr)', label: 'Tanım' },
         { key: 'kategori', width: '130px', label: 'Kategori', list: categories },
         { key: 'uretici', width: '120px', label: 'Üretici', list: () => distinct('uretici') },
-        { key: 'ureticiKodu', width: '140px', label: 'Üretici Kodu' },
+        { key: 'ureticiKodu', width: '160px', label: 'Model Kodu' },
         { key: 'tedarikci', width: '120px', label: 'Tedarikçi', list: () => distinct('tedarikci') },
         { key: 'tedarikciKodu', width: '110px', label: 'Tedarikçi Kodu' },
         { key: 'birim', width: '62px', label: 'Birim', list: () => settings.birimler },
-        { key: 'fiyat', width: '96px', label: 'Fiyat', align: 'right', kind: 'number' },
-        { key: 'paraBirimi', width: '66px', label: 'Para br.', kind: 'select', options: (x) => currencies(M.clean(x.fields.paraBirimi).toUpperCase()) },
         { key: 'teslimSuresi', width: '74px', label: 'Teslim', align: 'right', kind: 'number' },
         { key: 'link', width: '140px', label: 'Bağlantı' },
         { key: 'aciklama', width: 'minmax(220px, 1.6fr)', label: 'Açıklama', kind: 'multiline', className: 'c-muted', cell: (x) => esc(firstLine(fieldText(x, 'aciklama'))) }
@@ -1019,13 +972,13 @@ const BomxLibrary = (() => {
             ${state.tables && state.tables.length > 1 ? `<select class="field-input" id="imTable">${state.tables.map((tb, i) => `<option value="${i}"${i === state.table ? ' selected' : ''}>Tablo ${i + 1} · ${tb.length} satır</option>`).join('')}</select>` : ''}
             <label class="check-inline"><input type="checkbox" id="imHeader" ${state.hasHeader ? 'checked' : ''}> İlk satır başlık</label>
           </div></div>
-        <p class="field-help">Her sütunun hangi alana gideceğini seçin. <b>Kod</b> ve <b>Ad</b> gerekli; kod kütüphanede varsa kayıt güncellenir. Sonraki adımda satırları tek tek düzeltebilir, istemediklerinizi çıkarabilirsiniz.</p>
+        <p class="field-help">Her sütunun hangi alana gideceğini seçin. <b>Stok Kodu</b> ve <b>Tanım</b> gerekli; kod kütüphanede varsa kayıt güncellenir. Sonraki adımda satırları tek tek düzeltebilir, istemediklerinizi çıkarabilirsiniz.</p>
         <div class="map-grid">${state.headers.map((h, i) => {
           const sample = body.slice(0, 3).map((r) => r[i]).filter((v) => v !== '' && v !== undefined).join(' · ');
           return `<div class="map-col${state.columns[i] ? ' on' : ''}"><div class="src" title="${esc(h)}">${esc(h)}</div><div class="sample" title="${esc(sample)}">${esc(sample || '—')}</div>
             <select class="field-input" data-col="${i}">${options.map(([v, label]) => `<option value="${v}"${state.columns[i] === v ? ' selected' : ''}>${esc(label)}</option>`).join('')}</select></div>`;
         }).join('')}</div>`;
-      U.$('imActions').innerHTML = `<span class="left ${missing ? 'err-text' : 'muted'}">${missing ? 'Kod ve Ad sütunlarını seçin.' : `${t.items.length} satır okunacak`}</span>
+      U.$('imActions').innerHTML = `<span class="left ${missing ? 'err-text' : 'muted'}">${missing ? 'Stok Kodu ve Tanım sütunlarını seçin.' : `${t.items.length} satır okunacak`}</span>
         <button type="button" class="btn" data-close>Vazgeç</button>
         <button type="submit" class="btn btn-primary"${missing ? ' disabled' : ''}>Devam: satırları gözden geçir →</button>`;
       m.el.querySelectorAll('#imActions [data-close]').forEach((b) => b.addEventListener('click', () => m.cancel()));
@@ -1145,10 +1098,9 @@ const BomxLibrary = (() => {
 
     async function commitStaged(x, key, text) {
       let value = key === 'aciklama' ? M.cleanMultiline(text) : M.clean(text);
-      if (key === 'fiyat' || key === 'teslimSuresi') {
+      if (key === 'teslimSuresi') {
         if (value !== '' && (M.parseNumber(value) === null || M.parseNumber(value) < 0)) return `"${value}" geçerli bir sayı değil`;
       }
-      if (key === 'paraBirimi') value = value.toUpperCase();
       if (fieldText(x, key) === value) return '';
       x.fields[key] = value;
       x.edited.add(key);
@@ -1204,7 +1156,7 @@ const BomxLibrary = (() => {
       if (state.rows || state.tables) {
         const t = tableItems();
         if (!state.columns.includes('kod') || !state.columns.includes('ad')) {
-          U.toast('Kod ve Ad sütunlarını seçin', 'error');
+          U.toast('Stok Kodu ve Tanım sütunlarını seçin', 'error');
           return;
         }
         stage(t.items);
@@ -1352,7 +1304,7 @@ const BomxLibrary = (() => {
     const m = U.modal(`
       <h2>Tablodan yapıştır</h2>
       <p class="field-help">Excel'de başlık satırıyla birlikte sütunları seçip kopyalayın, buraya yapıştırın. Sonraki adımda sütunlar eşleştirilir ve satırlar düzenlenir.</p>
-      <textarea id="ipText" class="field-input paste-area" placeholder="Kod&#9;Ad&#9;Marka&#9;Fiyat"></textarea>
+      <textarea id="ipText" class="field-input paste-area" placeholder="Stok Kodu&#9;Tanım&#9;Marka&#9;Model Kodu"></textarea>
       <div class="modal-actions"><button type="button" class="btn" data-close>Vazgeç</button><button type="submit" class="btn btn-primary">Devam</button></div>`, {
       size: 'wide',
       onSubmit: (e, entry) => {

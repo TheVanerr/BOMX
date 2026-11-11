@@ -392,12 +392,12 @@ test('iki cihaz kütüphanenin aynı parçasında farklı komponentleri değişt
   const sb = BomxStore.createStore(b);
   // Aynı parçaya düşen iki kimlik
   const [x, y] = await sa.saveComponents([
-    { id: 'a00000000001', kod: 'PE01', ad: 'Pompa', fiyat: 100 },
-    { id: 'a00000000002', kod: 'V31', ad: 'Vana', fiyat: 10 }
+    { id: 'a00000000001', kod: 'PE01', ad: 'Pompa', kategori: 'Eski' },
+    { id: 'a00000000002', kod: 'V31', ad: 'Vana' }
   ]);
   await a.sync();
   await b.sync();
-  await sa.saveComponents([Object.assign({}, x, { fiyat: 120 })]);
+  await sa.saveComponents([Object.assign({}, x, { kategori: 'Yeni' })]);
   await sb.saveComponents([Object.assign({}, y, { ad: 'Sepet Aç Valfi' }), { id: 'a00000000003', kod: 'LS01', ad: 'Seviye' }]);
   await a.sync();
   await b.sync();
@@ -405,7 +405,7 @@ test('iki cihaz kütüphanenin aynı parçasında farklı komponentleri değişt
   for (const s of [sa, sb]) {
     const lib = (await s.loadLibrary()).components;
     assert.deepEqual(lib.map((c) => c.kod).sort(), ['LS01', 'PE01', 'V31']);
-    assert.equal(lib.find((c) => c.kod === 'PE01').fiyat, 120);
+    assert.equal(lib.find((c) => c.kod === 'PE01').kategori, 'Yeni');
     assert.equal(lib.find((c) => c.kod === 'V31').ad, 'Sepet Aç Valfi');
   }
   assert.equal([...hub.files().keys()].filter((k) => k.includes('.catisma-')).length, 0, 'çakışma kopyası olmamalı');
@@ -445,13 +445,13 @@ test('aynı proje iki cihazda düzenlenir: kalemler birleşir, alan başına en 
   const sec = pa.bolumler[0].id;
 
   const nextA = M.clone(pa);
-  nextA.kalemler.push(M.lineFromComponent({ id: 'c1', kod: 'PE01', ad: 'Pompa', fiyat: 50 }, 2, sec));
+  nextA.kalemler.push(M.lineFromComponent({ id: 'c1', kod: 'PE01', ad: 'Pompa' }, 2, sec));
   nextA.notlar = 'A notu';
   M.stampChanges(pa, nextA, '2026-11-10T10:00:00.000Z');
   await sa.saveProject(nextA);
 
   const nextB = M.clone(pb);
-  nextB.kalemler.push(M.lineFromComponent({ id: 'c2', kod: 'V31', ad: 'Vana', fiyat: 5 }, 4, sec));
+  nextB.kalemler.push(M.lineFromComponent({ id: 'c2', kod: 'V31', ad: 'Vana' }, 4, sec));
   nextB.durum = 'inceleme';
   M.stampChanges(pb, nextB, '2026-11-10T10:00:05.000Z');
   await sb.saveProject(nextB);

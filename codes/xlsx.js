@@ -1,7 +1,7 @@
 /* Excel (xlsx) yazma ve okuma; dış kütüphane yoktur.
    Zip yazıcı ve okuyucu P&PX'in xlsx.js dosyasından alındı (sıkıştırmasız yazar, okurken
    tarayıcının ve Node'un DecompressionStream'ini kullanır).
-   - bomWorkbook: biçimli malzeme listesi (bölümler, formüllü tutar ve ara toplamlar), satın alma ve özet sayfaları
+   - bomWorkbook: biçimli malzeme listesi (bölümler, hücreye yerleşen fotoğraflar), satın alma ve özet sayfaları
    - libraryWorkbook: komponent kütüphanesi
    - readWorkbook: ilk sayfanın satırları (kütüphane aktarımı için) */
 
@@ -125,7 +125,6 @@
 
   const STYLES = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
     '<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">' +
-    '<numFmts count="1"><numFmt numFmtId="164" formatCode="#,##0.00##"/></numFmts>' +
     '<fonts count="7">' +
     '<font><sz val="10"/><name val="Calibri"/><family val="2"/></font>' +
     '<font><b/><sz val="10"/><name val="Calibri"/><family val="2"/></font>' +
@@ -146,7 +145,7 @@
     '<border><left/><right/><top style="thin"><color rgb="FF15171C"/></top><bottom style="thin"><color rgb="FF15171C"/></bottom><diagonal/></border>' +
     '</borders>' +
     '<cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>' +
-    '<cellXfs count="18">' +
+    '<cellXfs count="13">' +
     /* 0 */ '<xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/>' +
     /* 1 başlık */ '<xf numFmtId="0" fontId="2" fillId="0" borderId="0" xfId="0" applyFont="1"/>' +
     /* 2 soluk etiket */ '<xf numFmtId="0" fontId="3" fillId="0" borderId="0" xfId="0" applyFont="1"/>' +
@@ -155,22 +154,16 @@
     /* 5 bölüm başlığı */ '<xf numFmtId="0" fontId="4" fillId="3" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1"/>' +
     /* 6 metin */ '<xf numFmtId="0" fontId="0" fillId="0" borderId="1" xfId="0" applyBorder="1" applyAlignment="1"><alignment vertical="top" wrapText="1"/></xf>' +
     /* 7 kalın metin (kod) */ '<xf numFmtId="0" fontId="1" fillId="0" borderId="1" xfId="0" applyFont="1" applyBorder="1" applyAlignment="1"><alignment vertical="top"/></xf>' +
-    /* 8 miktar */ '<xf numFmtId="0" fontId="1" fillId="0" borderId="1" xfId="0" applyFont="1" applyBorder="1" applyAlignment="1"><alignment horizontal="right" vertical="top"/></xf>' +
-    /* 9 birim fiyat */ '<xf numFmtId="164" fontId="0" fillId="0" borderId="1" xfId="0" applyNumberFormat="1" applyBorder="1" applyAlignment="1"><alignment vertical="top"/></xf>' +
-    /* 10 tutar */ '<xf numFmtId="4" fontId="0" fillId="0" borderId="1" xfId="0" applyNumberFormat="1" applyBorder="1" applyAlignment="1"><alignment vertical="top"/></xf>' +
-    /* 11 toplam etiketi */ '<xf numFmtId="0" fontId="5" fillId="4" borderId="3" xfId="0" applyFont="1" applyFill="1" applyBorder="1"/>' +
-    /* 12 toplam tutar */ '<xf numFmtId="4" fontId="5" fillId="4" borderId="3" xfId="0" applyNumberFormat="1" applyFont="1" applyFill="1" applyBorder="1"/>' +
-    /* 13 ara toplam etiketi */ '<xf numFmtId="0" fontId="1" fillId="0" borderId="1" xfId="0" applyFont="1" applyBorder="1" applyAlignment="1"><alignment horizontal="right"/></xf>' +
-    /* 14 ara toplam tutar */ '<xf numFmtId="4" fontId="1" fillId="0" borderId="1" xfId="0" applyNumberFormat="1" applyFont="1" applyBorder="1"/>' +
-    /* 15 ortalı metin */ '<xf numFmtId="0" fontId="0" fillId="0" borderId="1" xfId="0" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="top"/></xf>' +
-    /* 16 not */ '<xf numFmtId="0" fontId="6" fillId="0" borderId="0" xfId="0" applyFont="1" applyAlignment="1"><alignment wrapText="1" vertical="top"/></xf>' +
-    /* 17 kur */ '<xf numFmtId="164" fontId="0" fillId="0" borderId="1" xfId="0" applyNumberFormat="1" applyBorder="1"/>' +
+    /* 8 adet */ '<xf numFmtId="0" fontId="1" fillId="0" borderId="1" xfId="0" applyFont="1" applyBorder="1" applyAlignment="1"><alignment horizontal="right" vertical="top"/></xf>' +
+    /* 9 toplam etiketi */ '<xf numFmtId="0" fontId="5" fillId="4" borderId="3" xfId="0" applyFont="1" applyFill="1" applyBorder="1"/>' +
+    /* 10 toplam sayı */ '<xf numFmtId="0" fontId="5" fillId="4" borderId="3" xfId="0" applyFont="1" applyFill="1" applyBorder="1"/>' +
+    /* 11 ortalı metin */ '<xf numFmtId="0" fontId="0" fillId="0" borderId="1" xfId="0" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="top"/></xf>' +
+    /* 12 not */ '<xf numFmtId="0" fontId="6" fillId="0" borderId="0" xfId="0" applyFont="1" applyAlignment="1"><alignment wrapText="1" vertical="top"/></xf>' +
     '</cellXfs>' +
     '<cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles>' +
     '</styleSheet>';
 
-  const S = { title: 1, muted: 2, bold: 3, head: 4, section: 5, text: 6, code: 7, qty: 8, price: 9, amount: 10,
-    totalLabel: 11, total: 12, subLabel: 13, sub: 14, center: 15, note: 16, rate: 17 };
+  const S = { title: 1, muted: 2, bold: 3, head: 4, section: 5, text: 6, code: 7, qty: 8, totalLabel: 9, total: 10, center: 11, note: 12 };
 
   /* ─── Hücreler ────────────────────────────────────────── */
 
@@ -233,7 +226,8 @@
         const mergeXml = merges.length ? `<mergeCells count="${merges.length}">${merges.map((m) => `<mergeCell ref="${m}"/>`).join('')}</mergeCells>` : '';
         const setup = `<pageMargins left="0.4" right="0.4" top="0.5" bottom="0.6" header="0.2" footer="0.25"/>` +
           `<pageSetup paperSize="9" orientation="${o.portrait ? 'portrait' : 'landscape'}"${o.fit ? ' fitToWidth="1" fitToHeight="0"' : ''}/>` +
-          (o.footer ? `<headerFooter><oddFooter>${xml(o.footer)}</oddFooter></headerFooter>` : '');
+          (o.footer ? `<headerFooter><oddFooter>${xml(o.footer)}</oddFooter></headerFooter>` : '') +
+          (o.drawing ? '<drawing r:id="rId1"/>' : '');
         return '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
           '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">' +
           `${sheetPr}<sheetViews><sheetView workbookViewId="0" showGridLines="0"${o.tabSelected ? ' tabSelected="1"' : ''}>${pane}</sheetView></sheetViews>` +
@@ -247,14 +241,105 @@
     return String(text || 'Sayfa').replace(/[\\/?*[\]:]/g, ' ').trim().slice(0, 31) || 'Sayfa';
   }
 
+  /* ─── Fotoğraflar ─────────────────────────────────────── */
+
+  const PHOTO_BOX = { colWidth: 11, rowPt: 60, cellW: 82, cellH: 80, size: 72 };
+  const EMU = 9525;
+
+  function pngSize(b) {
+    if (b.length < 24) return null;
+    const v = new DataView(b.buffer, b.byteOffset, b.byteLength);
+    return { width: v.getUint32(16), height: v.getUint32(20) };
+  }
+
+  /** JPEG boyutu başlıktaki kare (SOF) bölümünden okunur */
+  function jpegSize(b) {
+    let i = 2;
+    while (i + 9 < b.length) {
+      if (b[i] !== 0xff) { i += 1; continue; }
+      const m = b[i + 1];
+      if (m === 0xff) { i += 1; continue; }
+      if (m >= 0xc0 && m <= 0xcf && m !== 0xc4 && m !== 0xc8 && m !== 0xcc) return { height: (b[i + 5] << 8) | b[i + 6], width: (b[i + 7] << 8) | b[i + 8] };
+      if (m === 0xd8 || m === 0x01 || (m >= 0xd0 && m <= 0xd7)) { i += 2; continue; }
+      i += 2 + ((b[i + 2] << 8) | b[i + 3]);
+    }
+    return null;
+  }
+
+  /** data URL → { key, bytes, ext, width, height }; Excel'e yalnız JPEG ve PNG gömülür */
+  function decodePhoto(src) {
+    const m = /^data:image\/(jpeg|png);base64,([A-Za-z0-9+/=]+)$/.exec(src || '');
+    if (!m) return null;
+    const bin = atob(m[2]);
+    const bytes = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i += 1) bytes[i] = bin.charCodeAt(i);
+    const size = m[1] === 'png' ? pngSize(bytes) : jpegSize(bytes);
+    return size && size.width && size.height ? Object.assign({ key: src, bytes, ext: m[1] }, size) : null;
+  }
+
+  /** Bir sayfanın çizim parçası: her fotoğraf hücresinde ortalanır, oranı korunur */
+  function drawingXml(images, relOf) {
+    const anchors = images.map((im, i) => {
+      const k = PHOTO_BOX.size / Math.max(im.photo.width, im.photo.height);
+      const w = Math.round(im.photo.width * k);
+      const h = Math.round(im.photo.height * k);
+      const cx = w * EMU;
+      const cy = h * EMU;
+      const colOff = Math.round(((PHOTO_BOX.cellW - w) / 2) * EMU);
+      const rowOff = Math.round(((PHOTO_BOX.cellH - h) / 2) * EMU);
+      return '<xdr:oneCellAnchor>' +
+        `<xdr:from><xdr:col>${im.col}</xdr:col><xdr:colOff>${colOff}</xdr:colOff><xdr:row>${im.row - 1}</xdr:row><xdr:rowOff>${rowOff}</xdr:rowOff></xdr:from>` +
+        `<xdr:ext cx="${cx}" cy="${cy}"/>` +
+        `<xdr:pic><xdr:nvPicPr><xdr:cNvPr id="${i + 2}" name="Fotoğraf ${i + 1}"/><xdr:cNvPicPr><a:picLocks noChangeAspect="1"/></xdr:cNvPicPr></xdr:nvPicPr>` +
+        `<xdr:blipFill><a:blip r:embed="${relOf(im.photo)}"/><a:stretch><a:fillRect/></a:stretch></xdr:blipFill>` +
+        `<xdr:spPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="${cx}" cy="${cy}"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom></xdr:spPr></xdr:pic>` +
+        '<xdr:clientData/></xdr:oneCellAnchor>';
+    });
+    return '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
+      '<xdr:wsDr xmlns:xdr="http://schemas.openxmlformats.org/drawingml/2006/spreadsheetDrawing" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">' +
+      `${anchors.join('')}</xdr:wsDr>`;
+  }
+
+  const REL_HEAD = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">';
+  const REL_BASE = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships';
+
+  /** Sayfalardaki fotoğrafların zip parçaları; aynı fotoğraf dosyada bir kez durur */
+  function imageParts(sheets) {
+    const media = new Map();
+    const parts = [];
+    const drawings = [];
+    sheets.forEach((sh, i) => {
+      if (!sh.images || !sh.images.length) return;
+      const n = i + 1;
+      const rels = new Map();
+      const relOf = (photo) => {
+        if (!media.has(photo.key)) media.set(photo.key, { name: `image${media.size + 1}.${photo.ext}`, bytes: photo.bytes });
+        const name = media.get(photo.key).name;
+        if (!rels.has(name)) rels.set(name, `rId${rels.size + 1}`);
+        return rels.get(name);
+      };
+      const body = drawingXml(sh.images, relOf);
+      parts.push([`xl/drawings/drawing${n}.xml`, body]);
+      parts.push([`xl/drawings/_rels/drawing${n}.xml.rels`, `${REL_HEAD}${[...rels.entries()].map(([name, id]) => `<Relationship Id="${id}" Type="${REL_BASE}/image" Target="../media/${name}"/>`).join('')}</Relationships>`]);
+      parts.push([`xl/worksheets/_rels/sheet${n}.xml.rels`, `${REL_HEAD}<Relationship Id="rId1" Type="${REL_BASE}/drawing" Target="../drawings/drawing${n}.xml"/></Relationships>`]);
+      drawings.push(n);
+    });
+    for (const m of media.values()) parts.push([`xl/media/${m.name}`, m.bytes]);
+    const exts = new Set([...media.values()].map((m) => m.name.split('.').pop()));
+    return { parts, drawings, exts };
+  }
+
   function workbook(sheets, definedNames) {
     const entries = [];
+    const images = imageParts(sheets);
     entries.push(['[Content_Types].xml', '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
       '<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">' +
       '<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>' +
       '<Default Extension="xml" ContentType="application/xml"/>' +
+      [...images.exts].map((e) => `<Default Extension="${e}" ContentType="image/${e}"/>`).join('') +
       '<Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>' +
       sheets.map((_, i) => `<Override PartName="/xl/worksheets/sheet${i + 1}.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>`).join('') +
+      images.drawings.map((n) => `<Override PartName="/xl/drawings/drawing${n}.xml" ContentType="application/vnd.openxmlformats-officedocument.drawing+xml"/>`).join('') +
       '<Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>' +
       '<Override PartName="/docProps/core.xml" ContentType="application/vnd.openxmlformats-package.core-properties+xml"/>' +
       '</Types>']);
@@ -282,50 +367,29 @@
       `<dcterms:created xsi:type="dcterms:W3CDTF">${now}</dcterms:created><dcterms:modified xsi:type="dcterms:W3CDTF">${now}</dcterms:modified>` +
       '</cp:coreProperties>']);
     sheets.forEach((sh, i) => entries.push([`xl/worksheets/sheet${i + 1}.xml`, sh.xml]));
+    entries.push(...images.parts);
     return writeZip(entries);
   }
 
   /* ─── Malzeme listesi ─────────────────────────────────── */
 
-  const COLUMN_WIDTH = { no: 6, kod: 16, ad: 42, kategori: 16, uretici: 16, ureticiKodu: 20, tedarikci: 18, referans: 16, miktar: 9,
-    birim: 8, fiyat: 13, paraBirimi: 8, iskonto: 8, tutar: 15, not: 28 };
+  const COLUMN_WIDTH = { foto: PHOTO_BOX.colWidth, kod: 15, ad: 36, ureticiKodu: 24, miktar: 9, aciklama: 62 };
 
   const formatDate = (iso) => (/^\d{4}-\d{2}-\d{2}$/.test(iso || '') ? `${iso.slice(8, 10)}.${iso.slice(5, 7)}.${iso.slice(0, 4)}` : iso || '');
 
-  /** Excel sütunları: ekrandaki seçim; fiyatlar istenmişse para birimi sütunu da gelir (tutar formülü için) */
-  function excelColumns(keys, withPrices) {
-    const out = [];
-    // Sütunlar seçim sırasıyla değil belgedeki sabit sırayla dizilir
-    for (const col of M.COLUMNS) {
-      const key = col.key;
-      if (!keys.includes(key) || (col.price && !withPrices)) continue;
-      out.push(key);
-      if (key === 'fiyat') out.push('paraBirimi');
-    }
-    // Tutar var, birim fiyat yoksa para birimi tutarın önüne girer
-    if (withPrices && out.includes('tutar') && !out.includes('paraBirimi')) out.splice(out.indexOf('tutar'), 0, 'paraBirimi');
-    return out;
-  }
-
-  function headerLabel(key, T) {
-    if (key === 'paraBirimi') return T.currency;
-    const col = M.COLUMNS.find((c) => c.key === key);
-    return T[col.doc] || col.label;
-  }
+  /** Metnin sütuna sığmak için kaç satır tuttuğu (satır yüksekliği için tahmin) */
+  const lineCount = (text, perLine) => String(text || '').split('\n').reduce((n, l) => n + Math.max(1, Math.ceil(l.length / perLine)), 0);
 
   /**
    * @param project normalize edilmiş proje
-   * @param options.columns sütun anahtarları (M.COLUMNS), options.prices fiyatlar, options.lang belge dili
+   * @param options.lang belge dili, options.photoOf (kalem) => fotoğraf data URL
    * @returns Uint8Array xlsx
    */
   function bomWorkbook(project, options) {
     const o = options || {};
     const lang = o.lang || project.dil || 'tr';
     const T = M.docText(lang);
-    const withPrices = o.prices !== false;
-    const keys = excelColumns(o.columns && o.columns.length ? o.columns : M.DEFAULT_COLUMNS, withPrices);
-    const idx = (key) => keys.indexOf(key);
-    const L = (key) => colName(idx(key));
+    const keys = M.COLUMNS.map((c) => c.key);
     const width = keys.length;
     const last = colName(width - 1);
     const sheet = sheetBuilder();
@@ -354,15 +418,15 @@
       sheet.add(cells);
     }
     sheet.blank();
-    const headRow = sheet.add(keys.map((k) => ({ value: headerLabel(k, T), style: S.head })), { height: 20 });
+    const headRow = sheet.add(M.COLUMNS.map((c) => ({ value: T[c.doc] || c.label, style: S.head })), { height: 20 });
 
-    const lineRows = [];
-    // İskonto sütunu belgede yoksa oran formüle sabit yazılır: Excel yeniden hesaplayınca da tutar uygulamayla aynı kalır
-    const amountFormula = (r, line) => {
-      const q = `${L('miktar')}${r}`;
-      const p = `${L('fiyat')}${r}`;
-      const d = idx('iskonto') >= 0 ? `*(1-${L('iskonto')}${r}/100)` : line.iskonto ? `*(1-${line.iskonto}/100)` : '';
-      return `IF(${p}="","",${q}*${p}${d})`;
+    const images = [];
+    const decoded = new Map();
+    const photoFor = (line) => {
+      const src = o.photoOf ? o.photoOf(line) : '';
+      if (!src) return null;
+      if (!decoded.has(src)) decoded.set(src, decodePhoto(src));
+      return decoded.get(src);
     };
     const numbered = M.numberedLines(project);
     project.bolumler.forEach((section, si) => {
@@ -374,85 +438,23 @@
         const r = sheet.add(cells, { height: 18 });
         sheet.merge(`A${r}:${last}${r}`);
       }
-      const first = sheet.row + 1;
-      for (const { line, no } of items) {
-        const r = sheet.row + 1;
-        const amount = M.lineAmount(line);
+      for (const { line } of items) {
+        const photo = photoFor(line);
+        const description = M.lineDescription(line, lang);
         const value = {
-          no: { value: no, style: S.center },
+          foto: { value: '', style: S.text },
           kod: { value: line.kod, style: S.code },
           ad: { value: line.ad, style: S.text },
-          kategori: { value: line.kategori, style: S.text },
-          uretici: { value: line.uretici, style: S.text },
           ureticiKodu: { value: line.ureticiKodu, style: S.text },
-          tedarikci: { value: line.tedarikci, style: S.text },
-          referans: { value: line.referans, style: S.text },
-          miktar: { value: Number(line.miktar) || 0, style: S.qty },
-          birim: { value: M.unitText(line.birim, lang), style: S.center },
-          fiyat: { value: M.isNum(line.fiyat) ? line.fiyat : null, style: S.price },
-          paraBirimi: { value: line.paraBirimi, style: S.center },
-          iskonto: { value: line.iskonto ? line.iskonto : null, style: S.qty },
-          tutar: idx('fiyat') >= 0 && idx('miktar') >= 0
-            ? { value: amount === null ? null : { f: amountFormula(r, line), v: M.round(amount, 6) }, style: S.amount }
-            : { value: amount === null ? null : M.round(amount, 2), style: S.amount },
-          not: { value: line.not, style: S.text }
+          miktar: { value: M.isPieceUnit(line.birim) ? Number(line.miktar) || 0 : M.qtyText(line, lang), style: S.qty },
+          aciklama: { value: description, style: S.text }
         };
-        sheet.add(keys.map((k) => value[k]));
-        lineRows.push(r);
-      }
-      const lastRow = sheet.row;
-      if (withPrices && o.subtotals !== false && project.bolumler.length > 1 && items.length && idx('tutar') >= 0) {
-        const sums = M.summarize(items.map((n) => n.line), project.paraBirimi, project.kurlar);
-        for (const cur of Object.keys(sums.byCurrency).sort()) {
-          const cells = new Array(width).fill(undefined).map(() => ({ value: '', style: S.subLabel }));
-          cells[Math.max(0, idx('tutar') - 1)] = { value: `${T.subtotal} (${cur})`, style: S.subLabel };
-          const range = (k) => `${L(k)}${first}:${L(k)}${lastRow}`;
-          cells[idx('tutar')] = {
-            value: idx('paraBirimi') >= 0 ? { f: `SUMIF(${range('paraBirimi')},"${cur}",${range('tutar')})`, v: M.round(sums.byCurrency[cur], 6) } : M.round(sums.byCurrency[cur], 2),
-            style: S.sub
-          };
-          sheet.add(cells);
-        }
+        const textPt = 14 * Math.max(lineCount(line.ad, 32), lineCount(line.ureticiKodu, 22), lineCount(description, 62));
+        const r = sheet.add(keys.map((k) => value[k]), { height: Math.min(300, Math.max(photo ? PHOTO_BOX.rowPt : 18, textPt)) });
+        if (photo) images.push({ row: r, col: keys.indexOf('foto'), photo });
       }
     });
 
-    const totals = M.projectTotals(project);
-    if (withPrices && idx('tutar') >= 0 && lineRows.length) {
-      sheet.blank();
-      const firstLine = Math.min(...lineRows);
-      const lastLine = Math.max(...lineRows);
-      const range = (k) => `$${L(k)}$${firstLine}:$${L(k)}$${lastLine}`;
-      const label = Math.max(0, idx('tutar') - 1);
-      const currencies = Object.keys(totals.byCurrency).sort();
-      const sumCells = new Map();
-      for (const cur of currencies) {
-        const cells = new Array(width).fill(undefined).map(() => ({ value: '', style: S.totalLabel }));
-        cells[label] = { value: `${T.total} (${cur})`, style: S.totalLabel };
-        cells[idx('tutar')] = {
-          value: idx('paraBirimi') >= 0 ? { f: `SUMIF(${range('paraBirimi')},"${cur}",${range('tutar')})`, v: M.round(totals.byCurrency[cur], 6) } : M.round(totals.byCurrency[cur], 2),
-          style: S.total
-        };
-        sumCells.set(cur, `${L('tutar')}${sheet.add(cells)}`);
-      }
-      // Başka para birimi varsa rapor para birimine çevrilmiş toplam; kurlar hücrededir, değişince toplam da değişir
-      if (currencies.some((c) => c !== project.paraBirimi)) {
-        const rateCells = new Map();
-        sheet.blank();
-        sheet.add([{ value: `${T.rates} (1 = TRY)`, style: S.muted }]);
-        for (const cur of [...new Set([...currencies, project.paraBirimi])].filter((c) => c !== 'TRY')) {
-          const r = sheet.add([{ value: cur, style: S.center }, { value: M.rateOf(cur, project.kurlar), style: S.rate }]);
-          rateCells.set(cur, `$B$${r}`);
-        }
-        const rate = (cur) => (cur === 'TRY' ? '1' : rateCells.get(cur));
-        const formula = `(${currencies.map((cur) => `${sumCells.get(cur)}*${rate(cur)}`).join('+')})/${rate(project.paraBirimi)}`;
-        const cells = new Array(width).fill(undefined).map(() => ({ value: '', style: S.totalLabel }));
-        cells[label] = { value: `${T.convertedTotal} (${project.paraBirimi})`, style: S.totalLabel };
-        cells[idx('tutar')] = { value: totals.converted === null ? null : { f: formula, v: M.round(totals.converted, 6) }, style: S.total };
-        sheet.add(cells);
-        if (project.kurTarihi) sheet.add([{ value: `${T.date}: ${formatDate(project.kurTarihi)}`, style: S.muted }]);
-      }
-      if (totals.missingPrice) sheet.add([{ value: `${totals.missingPrice} ${T.missingPrice}`, style: S.note }]);
-    }
     if (project.notlar) {
       sheet.blank();
       sheet.add([{ value: T.notes, style: S.bold }]);
@@ -464,7 +466,7 @@
       sheet.add([{ value: T.revisions, style: S.bold }]);
       sheet.add([{ value: T.rev, style: S.head }, { value: T.date, style: S.head }, { value: T.prepared, style: S.head }, { value: T.desc, style: S.head }]);
       for (const r of project.revizyonlar) {
-        sheet.add([{ value: r.rev, style: S.center }, { value: formatDate(r.tarih), style: S.center }, { value: r.hazirlayan, style: S.text }, { value: r.aciklama || (r.rev === '00' ? T.firstIssue : ''), style: S.text }]);
+        sheet.add([{ value: r.rev, style: S.center }, { value: formatDate(r.tarih), style: S.center }, { value: r.hazirlayan, style: S.text }, { value: M.revisionNote(r, T), style: S.text }]);
       }
     }
 
@@ -472,83 +474,66 @@
       name: lang === 'en' ? 'BOM' : lang === 'de' ? 'Stückliste' : 'Malzeme Listesi',
       xml: sheet.xml({
         widths: keys.map((k) => COLUMN_WIDTH[k] || 12),
+        drawing: images.length > 0,
         freezeRow: headRow,
         fit: true,
         tabSelected: true,
         footer: `&L${projectName} · ${T.rev} ${project.rev}&R${T.page} &P / &N`
-      })
+      }),
+      images
     }];
     const defined = [{ name: '_xlnm.Print_Titles', sheet: 0, ref: `'${sheetName(sheets[0].name)}'!$${headRow}:$${headRow}` }];
 
-    if (o.purchase !== false) sheets.push({ name: lang === 'en' ? 'Purchase' : lang === 'de' ? 'Bestellung' : 'Satın Alma', xml: purchaseSheet(project, lang, withPrices) });
-    if (o.summary !== false) sheets.push({ name: lang === 'en' ? 'Summary' : lang === 'de' ? 'Übersicht' : 'Özet', xml: summarySheet(project, lang, withPrices) });
+    if (o.purchase !== false) sheets.push({ name: lang === 'en' ? 'Purchase' : lang === 'de' ? 'Bestellung' : 'Satın Alma', xml: purchaseSheet(project, lang) });
+    if (o.summary !== false) sheets.push({ name: lang === 'en' ? 'Summary' : lang === 'de' ? 'Übersicht' : 'Özet', xml: summarySheet(project, lang) });
     sheets.title = `${projectName} ${T.title}`;
     return workbook(sheets, defined);
   }
 
-  function purchaseSheet(project, lang, withPrices) {
+  function purchaseSheet(project, lang) {
     const T = M.docText(lang);
     const sheet = sheetBuilder();
-    const heads = [T.supplier, T.code, T.name, T.maker, T.makerCode, T.qty, T.unit].concat(withPrices ? [T.price, T.currency, T.amount] : []).concat([T.ref]);
+    const heads = [T.supplier, T.code, T.name, T.maker, T.makerCode, T.qty, T.unit, T.ref];
     sheet.add([{ value: T.purchase, style: S.title }], { height: 24 });
     sheet.add([{ value: M.projectId(project.seriNo, project.musteri, project.model), style: S.bold }]);
     sheet.blank();
     const head = sheet.add(heads.map((h) => ({ value: h, style: S.head })), { height: 20 });
     for (const group of M.purchaseList(project)) {
       for (const item of group.items) {
-        const r = sheet.row + 1;
-        const cells = [
+        sheet.add([
           { value: group.tedarikci || T.noSupplier, style: S.text },
           { value: item.kod, style: S.code },
           { value: item.ad, style: S.text },
           { value: item.uretici, style: S.text },
           { value: item.ureticiKodu, style: S.text },
           { value: M.round(item.miktar, 6), style: S.qty },
-          { value: M.unitText(item.birim, lang), style: S.center }
-        ];
-        if (withPrices) {
-          cells.push({ value: M.isNum(item.fiyat) ? item.fiyat : null, style: S.price });
-          cells.push({ value: item.paraBirimi, style: S.center });
-          const d = item.iskonto ? `*(1-${item.iskonto}/100)` : '';
-          cells.push({ value: item.tutar === null ? null : { f: `F${r}*H${r}${d}`, v: M.round(item.tutar, 6) }, style: S.amount });
-        }
-        cells.push({ value: item.referans, style: S.text });
-        sheet.add(cells);
+          { value: M.unitText(item.birim, lang), style: S.center },
+          { value: item.referans, style: S.text }
+        ]);
       }
     }
     const lastRow = Math.max(head, sheet.row);
     return sheet.xml({
-      widths: [22, 16, 40, 16, 20, 9, 8].concat(withPrices ? [13, 8, 15] : []).concat([24]),
+      widths: [22, 16, 40, 16, 22, 9, 8, 24],
       freezeRow: head,
       fit: true,
       autoFilter: `A${head}:${colName(heads.length - 1)}${lastRow}`
     });
   }
 
-  function summarySheet(project, lang, withPrices) {
+  function summarySheet(project, lang) {
     const T = M.docText(lang);
     const sheet = sheetBuilder();
     sheet.add([{ value: T.summary, style: S.title }], { height: 24 });
     sheet.add([{ value: M.projectId(project.seriNo, project.musteri, project.model), style: S.bold }]);
     sheet.blank();
     const totals = M.projectTotals(project);
-    const heads = [T.category, T.count, T.qty].concat(withPrices ? [`${T.amount} (${project.paraBirimi})`, T.share] : []);
-    sheet.add(heads.map((h) => ({ value: h, style: S.head })), { height: 20 });
+    sheet.add([T.category, T.count, T.qty].map((h) => ({ value: h, style: S.head })), { height: 20 });
     for (const row of M.categoryBreakdown(project)) {
-      const cells = [{ value: row.kategori || T.uncategorized, style: S.text }, { value: row.count, style: S.qty }, { value: M.round(row.pieces, 6) || null, style: S.qty }];
-      if (withPrices) {
-        cells.push({ value: row.converted === null ? null : M.round(row.converted, 2), style: S.amount });
-        cells.push({ value: row.converted !== null && totals.converted ? `%${M.formatAmount((row.converted / totals.converted) * 100)}` : '', style: S.center });
-      }
-      sheet.add(cells);
+      sheet.add([{ value: row.kategori || T.uncategorized, style: S.text }, { value: row.count, style: S.qty }, { value: M.round(row.pieces, 6) || null, style: S.qty }]);
     }
-    const cells = [{ value: T.total, style: S.totalLabel }, { value: totals.count, style: S.total }, { value: M.round(totals.pieces, 6) || null, style: S.total }];
-    if (withPrices) {
-      cells.push({ value: totals.converted === null ? null : M.round(totals.converted, 2), style: S.total });
-      cells.push({ value: '', style: S.totalLabel });
-    }
-    sheet.add(cells);
-    return sheet.xml({ widths: [28, 10, 10, 20, 10], portrait: true, fit: true });
+    sheet.add([{ value: T.total, style: S.totalLabel }, { value: totals.count, style: S.total }, { value: M.round(totals.pieces, 6) || null, style: S.total }]);
+    return sheet.xml({ widths: [28, 10, 10], portrait: true, fit: true });
   }
 
   /* ─── Kütüphane ───────────────────────────────────────── */
@@ -561,13 +546,13 @@
       sheet.add([
         { value: c.kod, style: S.code }, { value: c.ad, style: S.text }, { value: c.kategori, style: S.text },
         { value: c.uretici, style: S.text }, { value: c.ureticiKodu, style: S.text }, { value: c.tedarikci, style: S.text },
-        { value: c.tedarikciKodu, style: S.text }, { value: c.birim, style: S.center }, { value: M.isNum(c.fiyat) ? c.fiyat : null, style: S.price },
-        { value: c.paraBirimi, style: S.center }, { value: c.teslimSuresi, style: S.qty }, { value: c.aciklama, style: S.text },
+        { value: c.tedarikciKodu, style: S.text }, { value: c.birim, style: S.center },
+        { value: c.teslimSuresi, style: S.qty }, { value: c.aciklama, style: S.text }, { value: c.aciklamaEn, style: S.text }, { value: c.aciklamaDe, style: S.text },
         { value: c.link, style: S.text }, { value: c.favori ? 'evet' : '', style: S.center }, { value: c.pasif ? 'evet' : '', style: S.center }
       ]);
     }
     const xmlSheet = sheet.xml({
-      widths: [16, 40, 16, 16, 20, 18, 16, 8, 13, 8, 10, 36, 30, 8, 8],
+      widths: [16, 40, 16, 16, 22, 18, 16, 8, 10, 36, 36, 36, 30, 8, 8],
       freezeRow: head,
       fit: true,
       autoFilter: `A${head}:O${Math.max(head, sheet.row)}`
@@ -639,5 +624,5 @@
     return rows.filter((r) => r.some((c) => c !== '' && c !== null && c !== undefined));
   }
 
-  return { readZip, writeZip, crc32, colName, bomWorkbook, libraryWorkbook, readWorkbook, excelColumns, STYLES };
+  return { readZip, writeZip, crc32, colName, bomWorkbook, libraryWorkbook, readWorkbook, decodePhoto, STYLES };
 });

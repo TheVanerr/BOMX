@@ -25,17 +25,17 @@ Anahtarın süresi dolmadan üç hafta önce ana ekranda uyarı çıkar (GitHub 
 
 ### 1. Komponent kütüphanesi (ana ekran → Komponentler)
 
-Genel komponent listesi: kod, ad, kategori, üretici ve üretici kodu (parça no), tedarikçi ve tedarikçi kodu, birim, birim fiyat ve para birimi, teslim süresi, açıklama / teknik özellik, bağlantı, favori, pasif.
+Genel komponent listesi: stok kodu, tanım (bizim sistemdeki ad), kategori, üretici ve model kodu (üreticinin tam kodu), tedarikçi ve tedarikçi kodu, birim, teslim süresi, açıklama / teknik özellik, bağlantı, favori, pasif. Programda fiyat, para birimi ve kur yoktur.
 
 - **+ Yeni komponent** sağdaki formu açar. Kod tekrarı (büyük/küçük harf ve Türkçe işaret farkı gözetmeden) kabul edilmez.
-- **Tabloda düzenleme**: satıra tıklamak yan formu açar, hücreye çift tıklamak hücreyi yerinde düzenler. **✎ Tabloda düzenle** açıkken tek tık yeter ve tabloya para birimi ile açıklama sütunları gelir. <kbd>Enter</kbd> alttaki satırın aynı hücresine, <kbd>Tab</kbd> sağdaki hücreye geçer, <kbd>Esc</kbd> vazgeçer; açıklamada <kbd>Shift</kbd>+<kbd>Enter</kbd> yeni satırdır. Her hücre ayrı kaydedilir; başka komponentin kodu ya da boş ad kabul edilmez, kutu kırmızı kalır.
+- **Tabloda düzenleme**: satıra tıklamak yan formu açar, hücreye çift tıklamak hücreyi yerinde düzenler. **✎ Tabloda düzenle** açıkken tek tık yeter ve tabloya açıklama sütunu gelir. <kbd>Enter</kbd> alttaki satırın aynı hücresine, <kbd>Tab</kbd> sağdaki hücreye geçer, <kbd>Esc</kbd> vazgeçer; açıklamada <kbd>Shift</kbd>+<kbd>Enter</kbd> yeni satırdır. Her hücre ayrı kaydedilir; başka komponentin kodu ya da boş ad kabul edilmez, kutu kırmızı kalır.
 - **Seçme ve silme**: satır başındaki kutular; <kbd>Shift</kbd> ile tıklamak aradakileri de seçer, <kbd>Ctrl</kbd>+<kbd>A</kbd> görünenlerin hepsini seçer, <kbd>Delete</kbd> seçilenleri siler (onay sorar; projede kullanılan için **Pasif yap** önerilir).
 - **Geri al**: <kbd>Ctrl</kbd>+<kbd>Z</kbd> / <kbd>Ctrl</kbd>+<kbd>Y</kbd> ya da araç çubuğundaki ↶ ↷. Hücre düzenlemesi, form, toplu değişiklik, silme ve içe aktarma geri alınır (sayfa açık kaldıkça son 60 işlem); bildirimdeki **Geri al** da aynısını yapar.
 - **Fotoğraf**: formun başındaki alana **Fotoğraf seç…** ile dosya seçilir, kopyalanan görsel form açıkken <kbd>Ctrl</kbd>+<kbd>V</kbd> ile yapıştırılır ya da dosya alana sürüklenip bırakılır; **Kaldır** siler. Görsel en uzun kenarı 420 px olacak şekilde küçültülüp JPEG olarak saklanır (~15–30 KB). Fotoğraf tabloda, düzenleyicinin sol panelinde ve ayrıntısında görünür; tıklayınca büyür. Fotoğraf değişikliği de geri alınır; silinen komponent geri alınınca fotoğrafıyla gelir. **Çoğalt** kaynağın fotoğrafını alır.
-- **İçe aktar**: dosya (BOMX komponent paketi .json, CSV, Excel .xlsx / .xlsm, ERP ürün ağacı, HTML rapor ya da tablo; ERP'lerin `.xls` adıyla verdiği HTML tablosu da), HTML raporları (aşağıda), Excel'den yapıştırılan tablo veya P&PX kod listesi. **Komponent paketi** alanları ve fotoğrafları tek dosyada taşır: önizlemede fotoğraf sütunu görünür, kütüphanede fotoğrafı olmayan koda paketteki fotoğraf eklenir (var olan fotoğrafa yalnız "dosyadakiyle değiştir" kipinde dokunulur). Dosyalar sayfaya sürüklenip bırakılabilir, birden çok dosya birlikte seçilebilir. Sütunlar başlıktan tahmin edilir (Stok Kodu, Sipariş kodu, Malzeme / Stok / Parça Adı, Ürün tam adı, Marka, Birim Fiyatı, Döviz…); kod ya da ad sütunu bulunamazsa önce eşleştirme sorulur. Excel'in `sep=;` satırıyla başlayan CSV'si doğrudan okunur. **Boş CSV şablonu indir** doğru başlıkları verir.
+- **İçe aktar**: dosya (BOMX komponent paketi .json, CSV, Excel .xlsx / .xlsm, ERP ürün ağacı, HTML rapor ya da tablo; ERP'lerin `.xls` adıyla verdiği HTML tablosu da), HTML raporları (aşağıda), Excel'den yapıştırılan tablo veya P&PX kod listesi. **Komponent paketi** (`BOMX elektrik komponentleri.json`) alanları ve fotoğrafları tek dosyada taşır; aktarınca GitHub'a bağlı programda `bomx-veri` deposuna kendiliğinden gönderilir (hemen göndermek için Veritabanı → **Şimdi eşitle**): önizlemede fotoğraf sütunu görünür, kütüphanede fotoğrafı olmayan koda paketteki fotoğraf eklenir (var olan fotoğrafa yalnız "dosyadakiyle değiştir" kipinde dokunulur). Dosyalar sayfaya sürüklenip bırakılabilir, birden çok dosya birlikte seçilebilir. Sütunlar başlıktan tahmin edilir (Stok Kodu, Sipariş kodu, Malzeme / Stok / Parça Adı, Ürün tam adı, Marka, Model…); kod ya da ad sütunu bulunamazsa önce eşleştirme sorulur. Excel'in `sep=;` satırıyla başlayan CSV'si doğrudan okunur. **Boş CSV şablonu indir** doğru başlıkları verir.
 - **Önizleme** (her aktarmada, kütüphaneye yazmadan önce): her satır durumunu gösterir (Yeni, Güncellenecek, Değişmeyecek, Hatalı, Alınmayacak; ipucunda değişecek alanlar). Hücreye tıklayıp düzeltin; satır başındaki kutuyla alın ya da çıkarın; aramayla ve filtrelerle süzüp **Görünenleri al / alma**, **Kategori / Üretici / Tedarikçi ata**. Kütüphanede olan kodlar için: dolu alanları güncelle (boş hücre var olanı silmez), dokunma (yalnız yenileri ekle), dosyadakiyle değiştir. Elle düzeltilen satır ✎ ile işaretlenir; düzeltme varken pencereyi kapatmak onay ister.
 - Aktarılanlar **Son aktarılanlar** filtresiyle açılır: gereksizleri seçip silin, kalanları tabloda düzeltin. GitHub'a bağlıysa aktarma beklemeden depoya gönderilir.
-- **Toplu düzenleme**: satırları işaretleyip kategori, üretici, tedarikçi, birim, para birimi atayın; fiyatları yüzdeyle değiştirin (zam / indirim); favori ya da pasif yapın; silin.
+- **Toplu düzenleme**: satırları işaretleyip kategori, üretici, tedarikçi, birim atayın; favori ya da pasif yapın; silin.
 - Kullanımdan kalkan komponenti silmek yerine **pasif** yapın: listelerde gizlenir, kullanıldığı projelerde Kontrol uyarı verir, eski projeler bozulmaz.
 - **Dışa aktar**: tümü ya da görünenler; Excel, CSV ya da fotoğraflı paket (JSON). Paket başka bir BOMX'e (ya da yeniden kurulan kütüphaneye) **İçe aktar → Dosyadan** ile fotoğraflarıyla alınır.
 
@@ -62,37 +62,35 @@ Solda komponent kütüphanesi, ortada liste, sağda özellikler ve kontrol, altt
 
 | Yol | Nasıl |
 |---|---|
-| Ara ve Enter | <kbd>/</kbd> ile arama kutusu; yazın, <kbd>↑</kbd> <kbd>↓</kbd> ile seçin, <kbd>Enter</kbd> bir ekler. <kbd>Shift</kbd>+<kbd>Enter</kbd> miktar kutusuna geçer, sayıyı yazıp <kbd>Enter</kbd> |
-| Miktar kutusu | Soldaki her satırda `−  [miktar]  +`: kutu bu bölümdeki miktarı gösterir, yazılan değer listeye işlenir; 0 yazmak kalemi çıkarır |
+| Ara ve Enter | <kbd>/</kbd> ile arama kutusu; yazın, <kbd>↑</kbd> <kbd>↓</kbd> ile seçin, <kbd>Enter</kbd> bir ekler. <kbd>Shift</kbd>+<kbd>Enter</kbd> adet kutusuna geçer, sayıyı yazıp <kbd>Enter</kbd> |
+| Adet kutusu | Soldaki her satırda `−  [adet]  +`: kutu bu bölümdeki adedi gösterir, yazılan değer listeye işlenir; 0 yazmak kalemi çıkarır |
 | Çift tık, sürükle | Çift tık bir ekler; satırı tabloda istediğiniz yere ya da alttaki bölüm sekmesine sürükleyin |
-| Yapıştır | Excel'den kod ve miktar sütunlarını kopyalayıp <kbd>Ctrl</kbd>+<kbd>V</kbd>; `PE01 2`, `2 x V31`, `LS01;4;not` de olur. Kütüphanede olmayan kodlar serbest kalem olur ya da atlanır |
+| Yapıştır | Excel'den stok kodu ve adet sütunlarını kopyalayıp <kbd>Ctrl</kbd>+<kbd>V</kbd>; `PE01 2`, `2 x V31`, `LS01;4` de olur. Kütüphanede olmayan kodlar serbest kalem olur ya da atlanır |
 | Şablon | Sol panel → Şablonlar: kayıtlı seti bölüme ya da yeni bölüm olarak ekleyin |
 | Başka projeden | Sol panel → Başka projeden: benzer makinenin listesinden kalem işaretleyip alın, bölümleriyle birlikte de |
 | Serbest kalem | Kütüphanede olmayan kalem (işçilik, nakliye, özel parça); isterseniz kütüphaneye de eklenir |
 
 - **Bölümler** (alt montaj: Elektrik Panosu, Pnömatik, Mekanik…): alttaki sekmelerle gezilir (<kbd>PageUp</kbd> / <kbd>PageDown</kbd>), **+ Bölüm** ekler, çift tık adını değiştirir. Bölüm başlığına tıklamak eklenen komponentin gideceği bölümü seçer. Numaralar tek bölümde 1, 2, 3; çok bölümde 1.1, 1.2, 2.1 olur.
-- **Tabloda düzenleme**: miktar, birim fiyat, iskonto, referans ve not hücreleri doğrudan yazılır; <kbd>Enter</kbd> alttaki satırın aynı hücresine geçer (Excel gibi), <kbd>Esc</kbd> vazgeçer. Sayılar Türkçe yazılır: `1.240,50`. Diğer alanlar sağ panelde.
-- **Seçim**: tıklama, <kbd>Ctrl</kbd> ve <kbd>Shift</kbd> ile çoklu, <kbd>Ctrl</kbd>+<kbd>A</kbd> görünenler. Çoklu seçimde sağ panel bölüme taşıma, miktarı çarpma, iskonto ve tedarikçi yazma, birleştirme sunar.
+- **Liste sütunları** (ekranda, PDF'te, Excel'de aynı): Fotoğraf, Stok Kodu, Tanım, Model Kodu, Adet, Açıklama. Açıklamaya yalnız teknik özellik girer; kütüphanedeki `Kullanım:`, `Komple:`, `Not:` ve `Kaynak (web):` satırları iç bilgidir, listeye yazılmaz.
+- **Tabloda düzenleme**: kütüphaneden gelen üründe yalnız **Adet** yazılır; <kbd>Enter</kbd> alttaki satırın adedine geçer (Excel gibi), <kbd>Esc</kbd> vazgeçer. Adet dışı birimler (m, kg…) sayının yanında görünür. Ürün bilgisi kütüphanede düzeltilir. Yalnız kütüphanede olmayan serbest kalemin alanları sağ panelden yazılır.
+- **Seçim**: tıklama, <kbd>Ctrl</kbd> ve <kbd>Shift</kbd> ile çoklu, <kbd>Ctrl</kbd>+<kbd>A</kbd> görünenler. Çoklu seçimde sağ panel bölüme taşıma, adedi çarpma ya da aynı adede getirme, birleştirme sunar.
 - **Kısayollar**: <kbd>Delete</kbd> sil, <kbd>Ctrl</kbd>+<kbd>D</kbd> çoğalt, <kbd>Alt</kbd>+<kbd>↑</kbd>/<kbd>↓</kbd> taşı, <kbd>+</kbd>/<kbd>−</kbd> miktar, <kbd>Ctrl</kbd>+<kbd>C</kbd> kopyala (başka projeye ya da Excel'e yapıştırılır), <kbd>Ctrl</kbd>+<kbd>Z</kbd> / <kbd>Ctrl</kbd>+<kbd>Y</kbd> geri al / yinele, <kbd>Ctrl</kbd>+<kbd>F</kbd> listede ara, <kbd>Ctrl</kbd>+<kbd>S</kbd> kaydet, <kbd>Ctrl</kbd>+<kbd>P</kbd> belge önizleme. Satıra sağ tık menü açar; tablo başlığına sağ tık görünen sütunları seçtirir.
-- **Kalem ve kütüphane**: kalem, eklendiği andaki kütüphane bilgisini taşır; projede değiştirilebilir (o projeye özel fiyat, üretici kodu). Kütüphanede fiyat ya da ad değişirse eski projeler kendiliğinden değişmez, **Kontrol** sekmesi farkı gösterir: **Kütüphaneden güncelle** ya da kalemdeki değeri **kütüphaneye yaz**.
-- **Kontrol** sekmesi: girilmemiş miktar ve fiyat, eksik kur, kütüphaneden farklı alanlar, silinmiş ya da pasif komponent, aynı bölümde tekrar eden kalem (tek tıkla birleşir), iki kalemde geçen referans, miktarla uyuşmayan referans sayısı, boş bölüm, açıklamasız revizyon. Satıra tıklamak ilgili kalemleri seçer.
-- **Alt panel**: **Özet** (kategoriye göre tutar ve pay, para birimi başına toplam ve kurlar), **Satın Alma** (aynı komponent bölümler arasında toplanır, tedarikçiye göre gruplanır; metin olarak e-postaya kopyalanır), **Revizyon Farkı**, **Referanslar** (P&ID kodu → kalem).
+- **İçerik dili**: üst çubuktaki **TR / EN / DE** listenin sütun başlıklarını ve açıklamaları o dilde gösterir, Excel ve CSV de bu dilde çıkar (program arayüzü Türkçe kalır). Açıklamanın İngilizcesi ve Almancası kütüphane formundaki **Açıklama (EN)** ve **Açıklama (DE)** alanlarından gelir; boşsa Türkçesi yazar. Tanım, bizim sistemimizdeki ad olduğu için çevrilmez.
+- **Kalem ve kütüphane**: kalem, eklendiği andaki kütüphane bilgisini taşır. Kütüphanede tanım, model kodu ya da açıklama değişirse eski projeler kendiliğinden değişmez, **Kontrol** sekmesi farkı gösterir ve **Kütüphaneden güncelle** sunar.
+- **Kontrol** sekmesi: girilmemiş adet, kütüphaneden farklı alanlar, silinmiş ya da pasif komponent, aynı bölümde tekrar eden kalem (tek tıkla birleşir), iki kalemde geçen referans, adetle uyuşmayan referans sayısı, boş bölüm, açıklamasız revizyon. Satıra tıklamak ilgili kalemleri seçer.
+- **Alt panel**: **Özet** (kategoriye göre kalem ve adet), **Satın Alma** (aynı komponent bölümler arasında toplanır, tedarikçiye göre gruplanır; metin olarak e-postaya kopyalanır), **Revizyon Farkı**, **Referanslar** (P&ID kodu → kalem).
 
-### 4. Para birimi ve kurlar
+### 4. Revizyon
 
-Fiyatlar kendi para biriminde girilir (TRY, EUR, USD…). Kurlar TL karşılığıdır (1 EUR = ? TRY) ve **Ayarlar** sekmesinde girilir; yeni proje o günkü kurları alır ve saklar, belge sonradan kendiliğinden değişmez. Projede kurlar sağ panelden değiştirilir ya da **Ayarlardaki kurları al** ile güncellenir. Toplam her para birimi için ayrı ve seçilen para birimine çevrilmiş olarak gösterilir; eksik kur Kontrol'de hata verir.
+Yeni proje Rev. 00 (ilk yayın) ile başlar. Sağ paneldeki **+ Rev.** listenin o anki hâlini saklar (`revizyon/<rev>.json`), Rev. numarasını artırır, açıklamasını sorar; belge tarihi bugün olur. **Revizyon Farkı** sekmesi saklanan hâle göre eklenen, çıkarılan, adedi değişen komponentleri gösterir. Revizyon tablosu PDF ve Excel'e girer.
 
-### 5. Revizyon
+### 5. Çıktılar
 
-Yeni proje Rev. 00 (ilk yayın) ile başlar. Sağ paneldeki **+ Rev.** listenin o anki hâlini saklar (`revizyon/<rev>.json`), Rev. numarasını artırır, açıklamasını sorar; belge tarihi bugün olur. **Revizyon Farkı** sekmesi saklanan hâle göre eklenen, çıkarılan, miktarı ya da fiyatı değişen komponentleri gösterir. Revizyon tablosu PDF ve Excel'e girer.
-
-### 6. Çıktılar
-
-- **PDF İndir**: A4 yatay, P&PX antetiyle (DOLFIN, VICO, ENVA, K.SYSTEM). Proje bilgileri, bölümlü liste (her sayfada tablo başlığı, bölüm sayfaya taşınca "(devam)"), ara ve genel toplam, kur notu, notlar, revizyon tablosu; isteğe bağlı özet ve satın alma listesi sayfaları. Belge dili TR / EN / DE (program arayüzü Türkçe kalır; birimler çevrilir). Dosya doğrudan İndirilenler'e iner; sayfalar vektördür, metin seçilip aranır, yazı tipi gömülüdür. **Önizleme** aynı sayfaları gösterir, seçenekler projeyle saklanır.
-- **Excel**: üç sayfa (Malzeme Listesi, Satın Alma, Özet). Tutarlar ve toplamlar formüldür (miktar ya da fiyat Excel'de değişince toplam da değişir), başlık satırı dondurulmuş ve her basılı sayfada yinelenir, yatay sayfaya sığdırılmış.
+- **PDF İndir**: pencerede belge dilleri (TR, EN, DE) ve kapak seçilir; birden çok dil seçilirse her dil kapağıyla tam belge olarak tek PDF'te arka arkaya gelir. A4 yatay, P&PX antetiyle (DOLFIN, VICO, ENVA, K.SYSTEM). İlk sayfa P&PX'teki standart kapaktır (Kırmızı Bant: logo, model, müşteri, belge bilgileri, imza kutuları); kapak numarasızdır. Proje bilgileri, bölümlü liste (fotoğraflı; her sayfada tablo başlığı, bölüm sayfaya taşınca "(devam)"), notlar, revizyon tablosu; isteğe bağlı özet ve satın alma listesi sayfaları. Belge dili TR / EN / DE (program arayüzü Türkçe kalır; birimler çevrilir). Dosya doğrudan İndirilenler'e iner; sayfalar vektördür, metin seçilip aranır, yazı tipi gömülüdür. **Önizleme** aynı sayfaları gösterir, seçenekler projeyle saklanır.
+- **Excel**: üç sayfa (Malzeme Listesi, Satın Alma, Özet). Fotoğraflar hücrelere yerleşir; başlık satırı dondurulmuş ve her basılı sayfada yinelenir, yatay sayfaya sığdırılmış.
 - **CSV**: noktalı virgüllü, ondalık virgüllü (Türkçe Excel doğrudan açar).
 
-### 7. P&PX ile
+### 6. P&PX ile
 
 P&PX aynı tarayıcıda (Chrome / Edge) kullanılıyorsa BOMX onun veritabanını yalnız okur, yazmaz:
 
@@ -120,7 +118,7 @@ P&PX bu tarayıcıda değilse P&PX projesindeki `P-IDX/ML/kayitlar/kodlar.json` 
 | `BOM/projeler/<proje>/proje.json` | Proje bilgileri, bölümler, kalemler, revizyon satırları |
 | `BOM/projeler/<proje>/revizyon/<rev>.json` | Revizyon yükseltilirken listenin hâli (değişmez) |
 | `BOM/sablonlar/<kimlik>.json` | Hazır setler |
-| `BOM/ayarlar.json` | Kurlar, para birimleri, kategoriler, birimler, kişiler, varsayılan bölümler |
+| `BOM/ayarlar.json` | Kategoriler, birimler, kişiler, varsayılan bölümler |
 
 ## Depo sınırları
 
@@ -129,8 +127,7 @@ P&PX bu tarayıcıda değilse P&PX projesindeki `P-IDX/ML/kayitlar/kodlar.json` 
 ## Sınırlar
 
 - **Erişim anahtarı:** Yalnız bu tarayıcıda saklanır, ancak bilgisayarda açtığınız başka bir yerel HTML dosyası da onu okuyabilir. Bu yüzden anahtar yalnız `bomx-veri` deposuna izinli olmalıdır; bilinmeyen HTML dosyalarını bu tarayıcıda açmayın.
-- **Özel depo zorunlu:** Herkese açık depoya bağlanılmaz, çünkü müşteri ve fiyat bilgisi içerir.
-- **Kurlar** elle girilir (TCMB ya da bankanızın kuru); program internetten kur çekmez.
+- **Özel depo zorunlu:** Herkese açık depoya bağlanılmaz, çünkü müşteri ve komponent bilgisi içerir.
 - **Excel:** eski ikili `.xls` biçimi okunmaz, `.xlsx` ya da CSV kullanın; ERP'lerin `.xls` adıyla verdiği HTML tablosu okunur.
 - **HTML raporları ve ürün ağaçları:** tür, kategori, üretici ve üretici kodu addan tahmin edilir; önizlemede gözden geçirin. Aileden ya da üst kompleden alınan fotoğraf temsilidir.
 - **Fotoğraf:** komponent başına bir fotoğraf; 300 komponentlik fotoğraflı kütüphane depoda ~6 MB tutar. Fotoğraf değişikliği yalnız ilgili parçayı (`f<hex>.json`) yeniden gönderir.
@@ -142,7 +139,7 @@ P&PX bu tarayıcıda değilse P&PX projesindeki `P-IDX/ML/kayitlar/kodlar.json` 
 |---|---|
 | `index.html` | Program: kurulum, ana ekran, düzenleyici |
 | `ortak/` | Veritabanı (`bomx-db.js`), GitHub bağlantısı (`bomx-github.js`), açılış (`bomx-boot.js`); P&PX ortak katmanından türetildi |
-| `codes/model.js` | İş kuralları: toplam, kontrol, birleştirme, CSV (tarayıcıya bağlı değil) |
+| `codes/model.js` | İş kuralları: adet özeti, kontrol, birleştirme, CSV (tarayıcıya bağlı değil) |
 | `codes/store.js` | Depodaki dosya düzeni |
 | `codes/xlsx.js` | Excel yazma ve okuma |
 | `codes/reports.js` | HTML raporlarından ve ERP ürün ağacından komponent ve fotoğraf çıkarma, elektrik sınıflandırması (tarayıcıya bağlı değil) |

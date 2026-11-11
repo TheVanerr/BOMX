@@ -87,11 +87,13 @@
 .bp-table .code { font-weight: 700; }
 .bp-table .muted { color: #4b5563; }
 .bp-table .qty { font-weight: 700; }
+.bp-ph { width: 12mm; height: 12mm; margin: 0 auto; }
+.bp-photo { display: block; width: 12mm; height: 12mm; object-fit: contain; }
+.bp-table td.photo { padding: 0.8mm 1mm; }
 .bp-table .nl { padding-left: 3.2mm; }
 .bp-table tr.sec td { background: #fdecec; color: #b00000; font-weight: 700; font-size: 8.3pt; padding: 1.4mm 1.3mm; border-bottom: 0.3mm solid #e8b4b4; }
 .bp-table tr.sec .n { display: inline-block; min-width: 4.8mm; padding: 0 1mm; margin-right: 1.8mm; background: var(--accent); color: #fff; text-align: center; border-radius: 0.6mm; }
 .bp-table tr.sec .cont { font-weight: 400; color: #6b7280; margin-left: 1.5mm; }
-.bp-table tr.sub td { font-weight: 700; background: #fafbfc; border-bottom: 0.3mm solid #9aa1ad; }
 .bp-table tr.total td { font-weight: 700; font-size: 8.6pt; background: #eef0f4; border-top: 0.35mm solid #15171c; border-bottom: 0.35mm solid #15171c; }
 .bp-table tr.group td { background: #f1f2f5; font-weight: 700; font-size: 8.2pt; }
 
@@ -100,15 +102,32 @@
 .bp-h .t { font-weight: 700; font-size: 10pt; letter-spacing: 0.04em; }
 .bp-h .s { color: #6b7280; font-size: 8pt; margin-left: auto; }
 
-.bp-totals { display: flex; justify-content: flex-end; }
-.bp-totals table { border-collapse: collapse; min-width: 95mm; font-size: 8.5pt; }
-.bp-totals td { padding: 1.2mm 2.4mm; border-bottom: 0.2mm solid #d7dbe2; }
-.bp-totals td.r { text-align: right; white-space: nowrap; font-weight: 600; }
-.bp-totals tr.grand td { font-size: 10pt; font-weight: 700; background: #eef0f4; border-top: 0.35mm solid #15171c; border-bottom: 0.35mm solid #15171c; }
 .bp-note { font-size: 7.5pt; color: #4b5563; line-height: 1.45; }
 .bp-notes { border-left: 0.8mm solid var(--accent); padding: 1.6mm 3mm; background: #fafbfc; font-size: 8pt; line-height: 1.5; white-space: pre-wrap; }
 .bp-notes b { display: block; margin-bottom: 0.6mm; }
-.bp-share { display: inline-block; width: 30mm; height: 2.6mm; background: #eef0f4; vertical-align: middle; margin-right: 2mm; }
-.bp-share i { display: block; height: 100%; background: var(--accent); }
 
 .bp-measure { position: fixed; left: -30000px; top: 0; visibility: hidden; pointer-events: none; }
+
+/* Standart kapak (P&PX "Kırmızı Bant"; A3 ölçüleri A4 yatay için 0,707 ile küçültüldü) */
+.pcv { --pcv-accent: #ff0000; --pcv-ink: #15171c; --pcv-gray: #6b7280; --pcv-line: #d7dbe2; display: flex; font-size: 11.3px; color: var(--pcv-ink); }
+.pcv h1, .pcv dl, .pcv dd { margin: 0; }
+.pcv .pcv-band { position: relative; width: 167px; flex-shrink: 0; overflow: hidden; background: var(--pcv-accent); color: #fff; }
+.pcv .pcv-band-mark { position: absolute; left: 0; right: 0; bottom: 42px; display: flex; justify-content: center; writing-mode: vertical-rl; transform: rotate(180deg); font-size: 119px; font-weight: 800; letter-spacing: -0.01em; line-height: 167px; white-space: nowrap; }
+.pcv .pcv-main { flex: 1; min-width: 0; display: flex; flex-direction: column; padding: 44px 65px 33px; }
+.pcv .pcv-logo { display: block; width: 226px; height: 81px; object-fit: contain; object-position: left center; flex-shrink: 0; }
+.pcv .pcv-logo-text { font-size: 44px; font-weight: 800; color: var(--pcv-accent); line-height: 81px; }
+.pcv .pcv-body { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); gap: 54px; align-items: center; }
+.pcv .pcv-kicker { font-size: 12.7px; font-weight: 700; letter-spacing: 0.16em; color: var(--pcv-accent); }
+.pcv .pcv-title { margin-top: 13px; font-weight: 800; line-height: 1.04; letter-spacing: -0.01em; overflow-wrap: anywhere; }
+.pcv .pcv-rule { margin-top: 21px; width: 93px; height: 5.7px; background: var(--pcv-accent); }
+.pcv .pcv-customer { margin-top: 18px; font-size: 19px; color: #3c4250; overflow-wrap: anywhere; line-height: 1.2; }
+.pcv .pcv-list { border-top: 1px solid var(--pcv-line); }
+.pcv .pcv-row { display: grid; grid-template-columns: 112px minmax(0, 1fr); gap: 10px; align-items: baseline; padding: 7px 1.4px; border-bottom: 1px solid var(--pcv-line); }
+.pcv .pcv-row dt { font-size: 10.6px; color: var(--pcv-gray); }
+.pcv .pcv-row dd { font-size: 13px; font-weight: 600; overflow-wrap: anywhere; line-height: 1.2; }
+.pcv .pcv-row dd.strong { color: var(--pcv-accent); font-weight: 800; }
+.pcv .pcv-sign { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 11px; }
+.pcv .pcv-sign-box { height: 83px; padding: 8px 10px 0; border: 1px solid var(--pcv-line); border-top: 3px solid var(--pcv-ink); min-width: 0; overflow: hidden; }
+.pcv .pcv-sign-box span { display: block; margin-bottom: 2px; font-size: 9.2px; font-weight: 600; letter-spacing: 0.05em; color: var(--pcv-gray); text-transform: uppercase; }
+.pcv .pcv-sign-box b { display: block; font-size: 12.7px; font-weight: 600; overflow-wrap: anywhere; line-height: 1.2; }
+.pcv .pcv-foot { margin-top: 13px; font-size: 10.6px; color: var(--pcv-accent); }

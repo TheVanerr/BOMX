@@ -115,7 +115,7 @@ test('paket: aynı fotoğraf havuzda bir kez durur, boş alan yazılmaz, tür ve
   const list = [
     { id: 'x1', kod: '10 1', ad: 'Pompa A', kategori: 'Pompa', tur: 'elektrik', neden: 'Pompa', kaynaklar: ['agac.html'], foto: JPG, fotoKaynagi: 'agac.html' },
     { id: 'x2', kod: '10 2', ad: 'Pompa B', kategori: 'Pompa', tur: 'elektrik', foto: JPG },
-    { id: 'x3', kod: '10 3', ad: 'Kablo', fiyat: 12.5, paraBirimi: 'EUR', foto: 'bozuk' }
+    { id: 'x3', kod: '10 3', ad: 'Kablo', teslimSuresi: 12, fiyat: 12.5, paraBirimi: 'EUR', foto: 'bozuk' }
   ];
   const doc = M.packageDocument(list, (c) => c.foto, { ad: 'Deneme' });
   assert.equal(doc.format, M.PACKAGE_FORMAT);
@@ -126,7 +126,9 @@ test('paket: aynı fotoğraf havuzda bir kez durur, boş alan yazılmaz, tür ve
   assert.equal(doc.komponentler[0].fotoKaynagi, 'agac.html');
   assert.equal('id' in doc.komponentler[0], false, 'kimlik taşınmaz');
   assert.equal('uretici' in doc.komponentler[0], false, 'boş alan yazılmaz');
-  assert.equal(doc.komponentler[2].fiyat, 12.5);
+  assert.equal(doc.komponentler[2].teslimSuresi, 12);
+  assert.equal('fiyat' in doc.komponentler[2], false, 'pakete fiyat yazılmaz');
+  assert.equal('paraBirimi' in doc.komponentler[2], false);
 
   const items = M.packageItems(JSON.parse(JSON.stringify(doc)));
   assert.deepEqual(items.map((it) => it.foto), [JPG, JPG, '']);
@@ -134,7 +136,7 @@ test('paket: aynı fotoğraf havuzda bir kez durur, boş alan yazılmaz, tür ve
   assert.deepEqual(items[0].meta, { sinif: 'elektrik', neden: 'Pompa', kaynaklar: ['agac.html'], uyarilar: [] });
   assert.equal(items[2].meta, null);
   const plan = M.planImport(items.map((it) => ({ row: it.row, fields: it.fields })), [], 'add');
-  assert.deepEqual(plan.add.map((c) => [c.kod, c.paraBirimi]), [['10 1', 'TRY'], ['10 2', 'TRY'], ['10 3', 'EUR']]);
+  assert.deepEqual(plan.add.map((c) => c.kod), ['10 1', '10 2', '10 3']);
 });
 
 test('paket okuma: doğrudan data URL, düz dizi; havuzda olmayan ya da geçersiz fotoğraf alınmaz', () => {

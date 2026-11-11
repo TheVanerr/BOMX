@@ -96,7 +96,8 @@ async function readSource(file) {
     if (e.kategori && !f.kategori) f.kategori = e.kategori;
     // Açıklama: özellik, not, raporun yazdığı (kullanım…), en sonda bilginin web kaynağı
     if (e.ozellik && !String(f.aciklama || '').includes(e.ozellik)) {
-      f.aciklama = [e.ozellik, e.not, f.aciklama, e.kaynak ? `Kaynak (web): ${e.kaynak}` : ''].filter(Boolean).join('\n');
+      // "Not:" ve "Kaynak (web):" satırları iç bilgidir, malzeme listesine girmez (BomxModel.bomDescription)
+      f.aciklama = [e.ozellik, e.not ? `Not: ${e.not}` : '', f.aciklama, e.kaynak ? `Kaynak (web): ${e.kaynak}` : ''].filter(Boolean).join('\n');
     }
     if (e.foto && (!it.foto || e.fotoDegistir)) {
       it.foto = photoData(e.foto, extraBase);
