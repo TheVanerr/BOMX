@@ -868,3 +868,5 @@ code { font-family: var(--mono); font-size: 11.5px; background: var(--panel-2); 
   #setup, #home, #app, #modalRoot, #toast, #studioRoot { display: none !important; }
   #printRoot { display: block !important; }
 }
+.dd-list { margin: 0; padding: 8px 10px 8px 26px; max-height: 190px; overflow: auto; background: var(--panel-2); border-radius: var(--radius); font-size: 12.5px; line-height: 1.5; }
+.dd-list b { margin-right: 6px; }

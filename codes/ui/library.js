@@ -331,20 +331,33 @@ const BomxLibrary = (() => {
   }
 
   /** Silmek yerine pasif yapmak önerilir: kullanılan komponentin bağlantısı korunur */
+  // GitHub'daki gibi: yanlışlıkla silmemek için onay metni yazılır (büyük/küçük harf, boşluk ve Türkçe işaret fark etmez)
+  const DELETE_PHRASE = 'TheVanerr/EMİNİM';
+  const isDeletePhrase = (text) => M.fold(String(text || '').replace(/\s+/g, '')) === M.fold(DELETE_PHRASE);
+
   function deleteDialog(list) {
     return new Promise((resolve) => {
       const used = list.filter((c) => app().state.usage.get(c.id));
       const projects = new Set(used.flatMap((c) => app().usageOf(c.id).map((p) => p.id)));
-      U.modal(`
+      const shown = list.slice(0, 8);
+      const m = U.modal(`
         <h2>${list.length === 1 ? `${esc(list[0].kod)} silinsin mi?` : `${list.length} komponent silinsin mi?`}</h2>
+        <ul class="dd-list">${shown.map((c) => `<li><b>${esc(c.kod)}</b> ${esc(c.ad)}</li>`).join('')}${list.length > shown.length ? `<li class="muted">ve ${list.length - shown.length} komponent daha</li>` : ''}</ul>
+        <div class="field"><label for="ddConfirm">Silmek için <b>${esc(DELETE_PHRASE)}</b> yazın</label>
+          <input id="ddConfirm" class="field-input" autocomplete="off" spellcheck="false" placeholder="${esc(DELETE_PHRASE)}"></div>
         ${used.length ? `<p class="field-help warn">${used.length} komponent ${projects.size} projede kullanılıyor. Silinirse o projelerdeki kalemler bilgileriyle durur, ama kütüphane bağlantısı kopar (Kontrol'de “silinmiş” görünür). Kullanımdan kalktıysa <b>Pasif yap</b> daha uygundur.</p>` : `<p class="field-help">${list.length === 1 ? 'Komponent' : 'Komponentler'} hiçbir projede kullanılmıyor.</p>`}
         <p class="field-help">Hemen sonra <b>Geri al</b> (Ctrl+Z) ile ya da GitHub geçmişinden geri alınabilir.</p>
         <div class="modal-actions">
           <button type="button" class="btn" data-close>Vazgeç</button>
           <button type="button" class="btn" id="ddPassive">Pasif yap</button>
-          <button type="submit" class="btn btn-danger">Sil</button>
+          <button type="submit" class="btn btn-danger" id="ddDelete" disabled>${list.length === 1 ? 'Sil' : `${list.length} komponenti sil`}</button>
         </div>`, {
         onSubmit: async (e, m) => {
+          // Enter da yalnız onay metni doğruysa siler
+          if (!isDeletePhrase(m.el.querySelector('#ddConfirm').value)) {
+            m.el.querySelector('#ddConfirm').focus();
+            return;
+          }
           m.close();
           const { n, entry } = await deleteTracked(list.length === 1 ? `${list[0].kod} silindi` : `${list.length} komponent silindi`, list);
           list.forEach((c) => S.checked.delete(c.id));
@@ -353,7 +366,11 @@ const BomxLibrary = (() => {
           resolve(true);
         },
         onCancel: () => resolve(false)
-      }).el.querySelector('#ddPassive').addEventListener('click', async () => {
+      });
+      const input = m.el.querySelector('#ddConfirm');
+      input.addEventListener('input', () => { m.el.querySelector('#ddDelete').disabled = !isDeletePhrase(input.value); });
+      setTimeout(() => input.focus(), 0);
+      m.el.querySelector('#ddPassive').addEventListener('click', async () => {
         U.topModal().close();
         const res = await saveTracked(`${list.length} komponent pasif`, list, list.map((c) => Object.assign({}, c, { pasif: true })));
         U.toast(`${list.length} komponent pasif yapıldı`, '', undoButton(res.entry));
