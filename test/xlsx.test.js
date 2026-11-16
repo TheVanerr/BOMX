@@ -14,7 +14,7 @@ function sampleProject() {
     bolumler: [{ id: 's1', ad: 'Elektrik Panosu' }, { id: 's2', ad: 'Pnömatik' }],
     kalemler: [
       { id: 'l1', bolum: 's1', komponentId: 'c1', kod: 'PE01', ad: 'Pompa "A"', ureticiKodu: 'XZS50-32', miktar: 2, aciklama: 'Paslanmaz pompa', tedarikci: 'Grundfos', referans: 'PE01, PE02' },
-      { id: 'l2', bolum: 's1', kod: 'KBL', ad: 'Kablo', miktar: 12.5, birim: 'm' },
+      { id: 'l2', bolum: 's1', kod: 'KBL', ad: 'Kablo', miktar: 12.5, birim: 'm', aciklama: 'Yıkama & <Durulama>' },
       { id: 'l3', bolum: 's2', komponentId: 'c1', kod: 'V31', ad: 'Valf', miktar: 4 },
       { id: 'l4', bolum: 's2', kod: 'SNS', ad: 'Sensör', miktar: 1 }
     ],
@@ -40,6 +40,8 @@ test('malzeme listesi çalışma kitabı gerekli parçaları ve üç sayfayı i�
   assert.match(book, /_xlnm\.Print_Titles/);
   const sheet = dec.decode(files.get('xl/worksheets/sheet1.xml'));
   assert.match(sheet, /Yıkama &amp; &lt;Durulama&gt;/, 'özel karakterler kaçırılır');
+  assert.match(sheet, /0626051-DÜNYA-ULT M200 3B · Endüstriyel Yıkama Makinesi/, 'başlıkta sabit açıklama');
+  assert.match(dec.decode((await X.readZip(X.bomWorkbook(sampleProject(), { lang: 'en' }))).get('xl/worksheets/sheet1.xml')), /· Industrial Washing Machine/, 'açıklama belgenin dilinde');
   for (const head of ['Fotoğraf', 'Stok Kodu', 'Tanım', 'Model Kodu', 'Adet', 'Açıklama']) assert.ok(sheet.includes(`>${head}<`), head);
   assert.match(sheet, /12,5 m/, 'adet dışı birim miktarın yanında yazar');
   assert.match(sheet, /state="frozen"/);

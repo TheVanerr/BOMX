@@ -56,7 +56,7 @@
   const DOC_LANGS = [['tr', 'TR', 'Türkçe'], ['en', 'EN', 'English'], ['de', 'DE', 'Deutsch']];
   const BRAND_IDS = ['DOLFIN', 'VICO', 'ENVA', 'KSYSTEM'];
 
-  const META_KEYS = ['seriNo', 'musteri', 'model', 'baslik', 'baslikEn', 'baslikDe', 'durum', 'firma', 'dil',
+  const META_KEYS = ['seriNo', 'musteri', 'model', 'baslik', 'durum', 'firma', 'dil',
     'rev', 'tarih', 'hazirlayan', 'kontrol', 'onay', 'notlar', 'notlarEn', 'notlarDe', 'cikti'];
 
   /** Komponent alanları: kütüphane formu, CSV ve sütun eşleştirme aynı listeyi kullanır */
@@ -110,7 +110,7 @@
       total: 'Toplam', items: 'kalem', page: 'Sayfa', continued: '(devam)', revisions: 'Revizyonlar', purchase: 'SATIN ALMA LİSTESİ',
       summary: 'ÖZET', noSupplier: 'Tedarikçi belirtilmemiş', firstIssue: 'İlk yayın', byCategory: 'Kategoriye göre',
       generated: 'BOMX ile oluşturuldu', notes: 'Notlar', sections: 'bölüm', count: 'Kalem', scope: 'Kapsam',
-      uncategorized: 'Kategorisiz', docType: 'Belge Türü', docTypeValue: 'Malzeme Listesi (BOM)', pages: 'Sayfa Sayısı'
+      uncategorized: 'Kategorisiz', docType: 'Belge Türü', docTypeValue: 'Malzeme Listesi (BOM)', descValue: 'Endüstriyel Yıkama Makinesi', pages: 'Sayfa Sayısı'
     },
     en: {
       title: 'BILL OF MATERIALS', subtitle: 'BOM', project: 'Project No', customer: 'Customer', model: 'Model',
@@ -120,7 +120,7 @@
       total: 'Total', items: 'items', page: 'Page', continued: '(continued)', revisions: 'Revisions', purchase: 'PURCHASE LIST',
       summary: 'SUMMARY', noSupplier: 'No supplier', firstIssue: 'First issue', byCategory: 'By category',
       generated: 'Generated with BOMX', notes: 'Notes', sections: 'sections', count: 'Items', scope: 'Scope',
-      uncategorized: 'Uncategorized', docType: 'Document Type', docTypeValue: 'Bill of Materials (BOM)', pages: 'Pages'
+      uncategorized: 'Uncategorized', docType: 'Document Type', docTypeValue: 'Bill of Materials (BOM)', descValue: 'Industrial Washing Machine', pages: 'Pages'
     },
     de: {
       title: 'STÜCKLISTE', subtitle: 'Bill of Materials (BOM)', project: 'Projekt-Nr.', customer: 'Kunde', model: 'Modell',
@@ -130,7 +130,7 @@
       total: 'Summe', items: 'Positionen', page: 'Seite', continued: '(Fortsetzung)', revisions: 'Revisionen', purchase: 'BESTELLLISTE',
       summary: 'ZUSAMMENFASSUNG', noSupplier: 'Kein Lieferant', firstIssue: 'Erstausgabe', byCategory: 'Nach Kategorie',
       generated: 'Erstellt mit BOMX', notes: 'Bemerkungen', sections: 'Abschnitte', count: 'Pos.', scope: 'Umfang',
-      uncategorized: 'Ohne Kategorie', docType: 'Dokumentart', docTypeValue: 'Stückliste (BOM)', pages: 'Seiten'
+      uncategorized: 'Ohne Kategorie', docType: 'Dokumentart', docTypeValue: 'Stückliste (BOM)', descValue: 'Industrielle Waschmaschine', pages: 'Seiten'
     }
   };
   const UNIT_TEXT = {
@@ -751,10 +751,8 @@
       seriNo: clean(p.seriNo),
       musteri: clean(p.musteri),
       model: clean(p.model),
+      // Eski projelerin elle yazılmış açıklaması; belgede yazmaz (antette sabit, dile göre çevrilen "Endüstriyel Yıkama Makinesi")
       baslik: clean(p.baslik),
-      // Antetteki açıklamanın ve notların çevirisi (yoksa belgede Türkçesi yazar)
-      baslikEn: clean(p.baslikEn),
-      baslikDe: clean(p.baslikDe),
       durum: STATUS_IDS.includes(p.durum) ? p.durum : 'taslak',
       firma: BRAND_IDS.includes(clean(p.firma).toUpperCase()) ? clean(p.firma).toUpperCase() : 'DOLFIN',
       dil: ['tr', 'en', 'de'].includes(p.dil) ? p.dil : 'tr',
@@ -764,6 +762,7 @@
       kontrol: clean(p.kontrol),
       onay: clean(p.onay),
       notlar: cleanMultiline(p.notlar),
+      // Notların çevirisi (yoksa belgede Türkçesi yazar)
       notlarEn: cleanMultiline(p.notlarEn),
       notlarDe: cleanMultiline(p.notlarDe),
       cikti: normalizeOutput(p.cikti),
@@ -861,8 +860,8 @@
   /** Türkçe açıklaması olan kalemin o dilde çevirisi var mı (Türkçede her zaman evet) */
   const hasTranslation = (line, lang, component) => !LANG_FIELD[lang] || !line.aciklama || !!translationOf(line, lang, component);
 
-  /** Projenin elle yazılan metni (key: 'baslik' antetteki açıklama, 'notlar') istenen dilde; çevirisi yoksa Türkçesi */
-  const PROJECT_TEXTS = [['baslik', 'Açıklama'], ['notlar', 'Notlar']];
+  /** Projenin elle yazılan metni (key: 'notlar') istenen dilde; çevirisi yoksa Türkçesi */
+  const PROJECT_TEXTS = [['notlar', 'Notlar']];
   const LANG_SUFFIX = { en: 'En', de: 'De' };
   function projectText(project, key, lang) {
     return (LANG_SUFFIX[lang] && project[key + LANG_SUFFIX[lang]]) || project[key] || '';

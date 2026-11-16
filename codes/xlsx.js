@@ -397,7 +397,7 @@
 
     sheet.add([{ value: `${T.title} (BOM)`, style: S.title }], { height: 24 });
     sheet.merge(`A1:${last}1`);
-    sheet.add([{ value: `${projectName}${project.baslik ? ` · ${M.projectText(project, 'baslik', lang)}` : ''}`, style: S.bold }]);
+    sheet.add([{ value: `${projectName} · ${T.descValue}`, style: S.bold }]);
     sheet.merge(`A2:${last}2`);
     sheet.blank();
     const info = [

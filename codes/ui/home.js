@@ -164,7 +164,6 @@ const BomxHome = (() => {
         <div class="field"><label for="npModel">Model <span class="req">*</span></label><input id="npModel" class="field-input" placeholder="ULT M200 3B" value="${esc(pre.model || '')}" autocomplete="off"></div>
       </div>
       <p class="field-help" id="npId"></p>
-      <div class="field"><label for="npBaslik">Açıklama</label><input id="npBaslik" class="field-input" placeholder="Örn: 3 tanklı ultrasonik yıkama makinesi" autocomplete="off"></div>
       <div class="field"><label>Başlangıç</label>
         <div class="radio-list" id="npStart">
           <label class="on"><input type="radio" name="npStart" value="empty" checked><span>Boş liste<small>Bölümler: <input id="npSections" class="field-input" value="${esc(sections)}" style="margin-top:4px" title="Virgülle ayırın"></small></span></label>
@@ -178,7 +177,7 @@ const BomxHome = (() => {
       onSubmit: async (e, entry) => {
         const v = (id) => entry.el.querySelector(`#${id}`).value;
         const err = (t) => { entry.el.querySelector('#npError').textContent = t; };
-        const input = { seriNo: v('npSeri'), musteri: v('npMusteri'), model: v('npModel'), baslik: v('npBaslik') };
+        const input = { seriNo: v('npSeri'), musteri: v('npMusteri'), model: v('npModel') };
         if (!M.projectId(input.seriNo, input.musteri, input.model)) return err('Seri no, müşteri ve model gerekli');
         const start = entry.el.querySelector('input[name=npStart]:checked').value;
         let seed = null;
