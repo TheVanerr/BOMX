@@ -610,6 +610,8 @@ const BomxPanels = (() => {
       <div class="field-row three">${field('ipSeri', 'Seri no', p.seriNo)}${field('ipMusteri', 'Müşteri', p.musteri)}${field('ipModel', 'Model', p.model)}</div>
       ${nameDiffers ? `<div class="field-help warn">Proje adı bu bilgilerden farklı. <button type="button" class="btn btn-xs" id="ipRename">Proje adını güncelle</button></div>` : ''}
       ${field('ipBaslik', 'Açıklama', p.baslik, { placeholder: 'Örn: 3 tanklı ultrasonik yıkama, opsiyonlu' })}
+      ${field('ipBaslikEn', 'Açıklama (EN)', p.baslikEn, { placeholder: 'Boşsa belgede Türkçesi yazar' })}
+      ${field('ipBaslikDe', 'Açıklama (DE)', p.baslikDe, { placeholder: 'Boşsa belgede Türkçesi yazar' })}
       <div class="field-row">${select('ipDurum', 'Durum', M.STATUSES.map((s) => [s.id, s.label]), p.durum)}${select('ipFirma', 'Belge anteti', M.BRAND_IDS.map((b) => [b, b]), p.firma)}</div>
       <div class="insp-section">Revizyon <span><button type="button" class="btn btn-xs" id="ipRevUp">+ Rev.</button> ${p.rev !== '00' ? '<button type="button" class="btn btn-xs btn-ghost" id="ipRevDown">Rev. sil</button>' : ''}</span></div>
       <div class="field-row">${field('ipRev', 'Rev.', p.rev)}${field('ipTarih', 'Tarih', p.tarih, { type: 'date' })}</div>
@@ -620,6 +622,8 @@ const BomxPanels = (() => {
       </div>`).join('')}
       <div class="insp-section">Notlar</div>
       ${field('ipNotlar', 'Belgenin sonunda yazar', p.notlar, { multiline: true, rows: 4 })}
+      ${field('ipNotlarEn', 'Notlar (EN)', p.notlarEn, { multiline: true, rows: 3, placeholder: 'Boşsa belgede Türkçesi yazar' })}
+      ${field('ipNotlarDe', 'Notlar (DE)', p.notlarDe, { multiline: true, rows: 3, placeholder: 'Boşsa belgede Türkçesi yazar' })}
       <div class="insp-section">Proje</div>
       <div class="insp-actions">
         <button type="button" class="btn btn-sm" id="ipDuplicate">Projeyi çoğalt</button>
@@ -727,7 +731,7 @@ const BomxPanels = (() => {
 
   function bindInspector() {
     const box = U.$('inspector');
-    const metaMap = { ipSeri: 'seriNo', ipMusteri: 'musteri', ipModel: 'model', ipBaslik: 'baslik', ipDurum: 'durum', ipFirma: 'firma', ipTarih: 'tarih', ipHaz: 'hazirlayan', ipKon: 'kontrol', ipOnay: 'onay', ipNotlar: 'notlar' };
+    const metaMap = { ipSeri: 'seriNo', ipMusteri: 'musteri', ipModel: 'model', ipBaslik: 'baslik', ipBaslikEn: 'baslikEn', ipBaslikDe: 'baslikDe', ipDurum: 'durum', ipFirma: 'firma', ipTarih: 'tarih', ipHaz: 'hazirlayan', ipKon: 'kontrol', ipOnay: 'onay', ipNotlar: 'notlar', ipNotlarEn: 'notlarEn', ipNotlarDe: 'notlarDe' };
     const lineMap = { ilBirim: 'birim', ilKod: 'kod', ilAd: 'ad', ilUreticiKodu: 'ureticiKodu', ilAciklama: 'aciklama', ilAciklamaEn: 'aciklamaEn', ilAciklamaDe: 'aciklamaDe' };
     box.addEventListener('input', (e) => {
       if (e.target.matches('input, textarea')) e.target.dataset.dirty = '1';
@@ -741,7 +745,8 @@ const BomxPanels = (() => {
         const key = metaMap[t.id];
         let value = t.value;
         if (['seriNo', 'musteri', 'model'].includes(key)) value = M.sanitizeName(value);
-        else if (key !== 'notlar') value = M.clean(value);
+        else if (key.startsWith('notlar')) value = M.cleanMultiline(value);
+        else value = M.clean(value);
         if (key === 'tarih' && !value) value = M.today();
         ed().setMeta(key, value, 'Proje bilgisi değişti');
         if (key === 'hazirlayan') {

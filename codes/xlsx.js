@@ -397,7 +397,7 @@
 
     sheet.add([{ value: `${T.title} (BOM)`, style: S.title }], { height: 24 });
     sheet.merge(`A1:${last}1`);
-    sheet.add([{ value: `${projectName}${project.baslik ? ` · ${project.baslik}` : ''}`, style: S.bold }]);
+    sheet.add([{ value: `${projectName}${project.baslik ? ` · ${M.projectText(project, 'baslik', lang)}` : ''}`, style: S.bold }]);
     sheet.merge(`A2:${last}2`);
     sheet.blank();
     const info = [
@@ -456,9 +456,10 @@
     });
 
     if (project.notlar) {
+      const notes = M.projectText(project, 'notlar', lang);
       sheet.blank();
       sheet.add([{ value: T.notes, style: S.bold }]);
-      const r = sheet.add([{ value: project.notlar, style: S.note }], { height: Math.min(200, 15 * (project.notlar.split('\n').length + 1)) });
+      const r = sheet.add([{ value: notes, style: S.note }], { height: Math.min(200, 15 * (notes.split('\n').length + 1)) });
       sheet.merge(`A${r}:${last}${r}`);
     }
     if (o.revisions !== false && project.revizyonlar.length) {

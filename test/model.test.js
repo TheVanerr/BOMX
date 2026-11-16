@@ -142,6 +142,19 @@ test('açıklama belgenin dilinde gelir; o dilde yoksa Türkçesi yazar', () => 
   const pp = project([Object.assign({}, old, { id: 'l1', bolum: 's1', miktar: 1 })], { dil: 'de' });
   assert.match(M.checkProject(pp, new Map([['c2', lib2]])).map((c) => c.text).join(' | '), /Almanca açıklaması olmayan 1 kalem/);
   assert.equal(M.projectToCsvRows(Object.assign({}, pp, { dil: 'en' }), 'en', new Map([['c2', lib2]]))[1][5], 'Valve');
+  // Antetteki açıklama ve notlar da dile göre yazar; çevirisi yoksa Türkçesi, Kontrol uyarır
+  const pj = M.normalizeProject({ id: 'P', seriNo: '1', musteri: 'A', model: 'B', dil: 'en', baslik: 'Yıkama makinesi', baslikEn: 'Washing machine', notlar: 'Teslim fabrikada', kalemler: [] });
+  assert.equal(M.projectText(pj, 'baslik', 'en'), 'Washing machine');
+  assert.equal(M.projectText(pj, 'baslik', 'de'), 'Yıkama makinesi');
+  assert.equal(M.projectText(pj, 'baslik', 'tr'), 'Yıkama makinesi');
+  assert.equal(M.projectText(pj, 'notlar', 'en'), 'Teslim fabrikada');
+  assert.deepEqual(M.untranslatedProjectTexts(pj, 'en').map(([k]) => k), ['notlar']);
+  assert.deepEqual(M.untranslatedProjectTexts(pj, 'de').map(([k]) => k), ['baslik', 'notlar']);
+  assert.deepEqual(M.untranslatedProjectTexts(pj, 'tr'), []);
+  assert.match(M.checkProject(pj, new Map()).map((c) => c.text).join(' | '), /İngilizce çevirisi olmayan proje metni .*Notlar/);
+  assert.doesNotMatch(M.checkProject(Object.assign({}, pj, { cikti: { notlar: false } }), new Map()).map((c) => c.text).join(' | '), /çevirisi olmayan proje metni/, 'belgeye girmeyen notlar için uyarı yok');
+  assert.ok(M.META_KEYS.includes('baslikEn') && M.META_KEYS.includes('notlarDe'), 'çeviriler alan alan birleşir');
+  assert.equal(M.normalizeProject({ id: 'X' }).baslikEn, '', 'eski dosyada çeviri alanı boş gelir');
   assert.equal(M.normalizeOutput({}).kapak, true, 'kapak varsayılan olarak açık');
   assert.equal(M.normalizeOutput({ kapak: false }).kapak, false);
   for (const [lang] of M.DOC_LANGS) for (const key of ['docType', 'docTypeValue', 'pages', 'title']) assert.ok(M.docText(lang)[key], `${lang}.${key}`);

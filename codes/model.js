@@ -56,8 +56,8 @@
   const DOC_LANGS = [['tr', 'TR', 'Türkçe'], ['en', 'EN', 'English'], ['de', 'DE', 'Deutsch']];
   const BRAND_IDS = ['DOLFIN', 'VICO', 'ENVA', 'KSYSTEM'];
 
-  const META_KEYS = ['seriNo', 'musteri', 'model', 'baslik', 'durum', 'firma', 'dil',
-    'rev', 'tarih', 'hazirlayan', 'kontrol', 'onay', 'notlar', 'cikti'];
+  const META_KEYS = ['seriNo', 'musteri', 'model', 'baslik', 'baslikEn', 'baslikDe', 'durum', 'firma', 'dil',
+    'rev', 'tarih', 'hazirlayan', 'kontrol', 'onay', 'notlar', 'notlarEn', 'notlarDe', 'cikti'];
 
   /** Komponent alanları: kütüphane formu, CSV ve sütun eşleştirme aynı listeyi kullanır */
   const COMPONENT_FIELDS = [
@@ -752,6 +752,9 @@
       musteri: clean(p.musteri),
       model: clean(p.model),
       baslik: clean(p.baslik),
+      // Antetteki açıklamanın ve notların çevirisi (yoksa belgede Türkçesi yazar)
+      baslikEn: clean(p.baslikEn),
+      baslikDe: clean(p.baslikDe),
       durum: STATUS_IDS.includes(p.durum) ? p.durum : 'taslak',
       firma: BRAND_IDS.includes(clean(p.firma).toUpperCase()) ? clean(p.firma).toUpperCase() : 'DOLFIN',
       dil: ['tr', 'en', 'de'].includes(p.dil) ? p.dil : 'tr',
@@ -761,6 +764,8 @@
       kontrol: clean(p.kontrol),
       onay: clean(p.onay),
       notlar: cleanMultiline(p.notlar),
+      notlarEn: cleanMultiline(p.notlarEn),
+      notlarDe: cleanMultiline(p.notlarDe),
       cikti: normalizeOutput(p.cikti),
       bolumler: dedupeById((Array.isArray(p.bolumler) ? p.bolumler : []).filter(Boolean).map(normalizeSection)),
       kalemler: dedupeById((Array.isArray(p.kalemler) ? p.kalemler : []).filter(Boolean).map(normalizeLine)),
@@ -855,6 +860,19 @@
 
   /** Türkçe açıklaması olan kalemin o dilde çevirisi var mı (Türkçede her zaman evet) */
   const hasTranslation = (line, lang, component) => !LANG_FIELD[lang] || !line.aciklama || !!translationOf(line, lang, component);
+
+  /** Projenin elle yazılan metni (key: 'baslik' antetteki açıklama, 'notlar') istenen dilde; çevirisi yoksa Türkçesi */
+  const PROJECT_TEXTS = [['baslik', 'Açıklama'], ['notlar', 'Notlar']];
+  const LANG_SUFFIX = { en: 'En', de: 'De' };
+  function projectText(project, key, lang) {
+    return (LANG_SUFFIX[lang] && project[key + LANG_SUFFIX[lang]]) || project[key] || '';
+  }
+
+  /** Türkçesi yazılıp o dilde çevirisi olmayan proje metinleri: [[key, etiket]] */
+  function untranslatedProjectTexts(project, lang) {
+    if (!LANG_SUFFIX[lang]) return [];
+    return PROJECT_TEXTS.filter(([key]) => project[key] && !project[key + LANG_SUFFIX[lang]]);
+  }
 
   function lineFromComponent(component, qty, sectionId) {
     const c = normalizeComponent(component);
@@ -1014,6 +1032,12 @@
 
     for (const [key, label] of [['seriNo', 'Seri no'], ['musteri', 'Müşteri'], ['model', 'Model']]) {
       if (!project[key]) push('error', `Proje bilgisi eksik: ${label}`);
+    }
+    // Notlar belgeye girmiyorsa çevirisi aranmaz
+    const texts = untranslatedProjectTexts(project, project.dil).filter(([key]) => key !== 'notlar' || normalizeOutput(project.cikti).notlar);
+    if (texts.length) {
+      const suffix = project.dil.toUpperCase();
+      push('warn', `${LANG_NAME[project.dil]} çevirisi olmayan proje metni (belgede Türkçesi yazar): ${texts.map(([, label]) => label).join(', ')}. Sağ panelde proje bilgilerindeki ${texts.map(([, label]) => `“${label} (${suffix})”`).join(' ve ')} alanını doldurun.`);
     }
     if (!project.kalemler.length) {
       push('info', 'Malzeme listesi boş. Soldaki kütüphaneden komponent ekleyin.');
@@ -1786,6 +1810,8 @@
     lineDescription,
     translationOf,
     hasTranslation,
+    projectText,
+    untranslatedProjectTexts,
     docSafe,
     revisionNote,
     qtyText,

@@ -123,7 +123,7 @@ const BomxOutput = (() => {
       ${row(T.project, project.seriNo, T.rev, project.rev, T.prepared, project.hazirlayan)}
       ${row(T.customer, project.musteri, T.date, fmt(project.tarih), T.checked, project.kontrol)}
       ${row(T.model, project.model, T.status, M.statusLabel(project.durum, lang), T.approved, project.onay)}
-      ${project.baslik ? `<tr><td class="k">${esc(T.desc)}</td><td class="v" colspan="3">${esc(project.baslik)}</td><td class="k">${esc(T.scope)}</td><td class="v">${esc(summary)}</td></tr>`
+      ${project.baslik ? `<tr><td class="k">${esc(T.desc)}</td><td class="v" colspan="3">${esc(M.docSafe(M.projectText(project, 'baslik', lang)))}</td><td class="k">${esc(T.scope)}</td><td class="v">${esc(summary)}</td></tr>`
         : `<tr><td class="k">${esc(T.scope)}</td><td class="v" colspan="5">${esc(summary)}</td></tr>`}
     </table>`;
   }
@@ -194,7 +194,7 @@ const BomxOutput = (() => {
       [T.project, project.seriNo, true],
       [T.customer, project.musteri],
       [T.model, project.model],
-      project.baslik ? [T.desc, project.baslik] : null,
+      project.baslik ? [T.desc, M.docSafe(M.projectText(project, 'baslik', lang))] : null,
       [T.docType, T.docTypeValue],
       [T.rev, project.rev],
       [T.date, U.formatDate(project.tarih)],
@@ -322,7 +322,7 @@ const BomxOutput = (() => {
     flowTable(cols, rows, contHtml);
     // 3. Notlar, revizyonlar
     if (out.notlar && project.notlar) {
-      const html = `<div class="bp-notes"><b>${esc(T.notes)}</b>${esc(project.notlar)}</div>`;
+      const html = `<div class="bp-notes"><b>${esc(T.notes)}</b>${esc(M.docSafe(M.projectText(project, 'notlar', lang)))}</div>`;
       addBlock(html, heightOf(html));
     }
     if (out.revizyonlar && project.revizyonlar.length) {

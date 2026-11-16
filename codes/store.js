@@ -268,7 +268,7 @@
           zaman: project.guncelleme
         })));
         // Kopyada belge ayarları da gelir (notlar, antet, dil, PDF seçenekleri); kimlik, durum ve revizyon gelmez
-        for (const key of ['notlar', 'firma', 'dil', 'cikti']) {
+        for (const key of ['notlar', 'notlarEn', 'notlarDe', 'firma', 'dil', 'cikti']) {
           if (seed[key] !== undefined && (input || {})[key] === undefined) project[key] = M.clone(seed[key]);
         }
       }

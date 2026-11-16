@@ -7,3 +7,5 @@ P&PX/
 aktarim/
 BOMX elektrik komponentleri.json
 BOMX kutuphane paketi*.json
+# Teklifler ve başka belgeler (şirket verisi; depo herkese açık)
+*.pdf
