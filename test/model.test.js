@@ -143,7 +143,7 @@ test('açıklama belgenin dilinde gelir; o dilde yoksa Türkçesi yazar', () => 
   assert.match(M.checkProject(pp, new Map([['c2', lib2]])).map((c) => c.text).join(' | '), /Almanca açıklaması olmayan 1 kalem/);
   assert.equal(M.projectToCsvRows(Object.assign({}, pp, { dil: 'en' }), 'en', new Map([['c2', lib2]]))[1][5], 'Valve');
   // Antetteki açıklama sabittir ve belgenin diliyle yazar; notlar elle çevrilir (çevirisi yoksa Türkçesi, Kontrol uyarır)
-  assert.deepEqual(['tr', 'en', 'de'].map((l) => M.docText(l).descValue), ['Endüstriyel Parça Yıkama Makinesi', 'Industrial Parts Washing Machine', 'Industrielle Teilewaschmaschine']);
+  assert.deepEqual(['tr', 'en', 'de'].map((l) => M.docText(l).descValue), ['Endüstriyel Parça Yıkama Makinesi', 'Industrial Parts Washing Machine', 'Industrie-Teilereinigungsmaschine']);
   const pj = M.normalizeProject({ id: 'P', seriNo: '1', musteri: 'A', model: 'B', dil: 'en', baslik: 'Eski açıklama', notlar: 'Teslim fabrikada', notlarDe: 'Lieferung ab Werk', kalemler: [] });
   assert.equal(M.projectText(pj, 'notlar', 'en'), 'Teslim fabrikada');
   assert.equal(M.projectText(pj, 'notlar', 'de'), 'Lieferung ab Werk');

@@ -130,7 +130,7 @@
       total: 'Summe', items: 'Positionen', page: 'Seite', continued: '(Fortsetzung)', revisions: 'Revisionen', purchase: 'BESTELLLISTE',
       summary: 'ZUSAMMENFASSUNG', noSupplier: 'Kein Lieferant', firstIssue: 'Erstausgabe', byCategory: 'Nach Kategorie',
       generated: 'Erstellt mit BOMX', notes: 'Bemerkungen', sections: 'Abschnitte', count: 'Pos.', scope: 'Umfang',
-      uncategorized: 'Ohne Kategorie', docType: 'Dokumentart', docTypeValue: 'Stückliste (BOM)', descValue: 'Industrielle Teilewaschmaschine', pages: 'Seiten'
+      uncategorized: 'Ohne Kategorie', docType: 'Dokumentart', docTypeValue: 'Stückliste (BOM)', descValue: 'Industrie-Teilereinigungsmaschine', pages: 'Seiten'
     }
   };
   const UNIT_TEXT = {
