@@ -59,7 +59,10 @@ self.addEventListener('activate', (event) => {
 });
 
 async function fromNetwork(request, cache) {
-  const response = await fetch(request);
+  // GitHub Pages dosyaları tarayıcıya 10 dakika saklatır (max-age=600); fetch(request) bu süre içinde sunucuya
+  // sormadan eski dosyayı verirdi. Program dosyası her seferinde sunucuya sorulur (değişmediyse 304, veri inmez).
+  // Sayfanın kendisi (navigate) olduğu gibi istenir: yeniden yüklemede tarayıcı zaten sorar.
+  const response = await fetch(request.mode === 'navigate' ? request : new Request(request.url, { cache: 'no-cache', credentials: 'same-origin' }));
   if (response.ok && response.type === 'basic') await cache.put(request, response.clone());
   return response;
 }
