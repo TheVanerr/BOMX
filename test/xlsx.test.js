@@ -40,8 +40,8 @@ test('malzeme listesi çalışma kitabı gerekli parçaları ve üç sayfayı i�
   assert.match(book, /_xlnm\.Print_Titles/);
   const sheet = dec.decode(files.get('xl/worksheets/sheet1.xml'));
   assert.match(sheet, /Yıkama &amp; &lt;Durulama&gt;/, 'özel karakterler kaçırılır');
-  assert.match(sheet, /0626051-DÜNYA-ULT M200 3B · Endüstriyel Yıkama Makinesi/, 'başlıkta sabit açıklama');
-  assert.match(dec.decode((await X.readZip(X.bomWorkbook(sampleProject(), { lang: 'en' }))).get('xl/worksheets/sheet1.xml')), /· Industrial Washing Machine/, 'açıklama belgenin dilinde');
+  assert.match(sheet, /0626051-DÜNYA-ULT M200 3B · Endüstriyel Parça Yıkama Makinesi/, 'başlıkta sabit açıklama');
+  assert.match(dec.decode((await X.readZip(X.bomWorkbook(sampleProject(), { lang: 'en' }))).get('xl/worksheets/sheet1.xml')), /· Industrial Parts Washing Machine/, 'açıklama belgenin dilinde');
   for (const head of ['Fotoğraf', 'Stok Kodu', 'Tanım', 'Model Kodu', 'Adet', 'Açıklama']) assert.ok(sheet.includes(`>${head}<`), head);
   assert.match(sheet, /12,5 m/, 'adet dışı birim miktarın yanında yazar');
   assert.match(sheet, /state="frozen"/);

@@ -110,7 +110,7 @@
       total: 'Toplam', items: 'kalem', page: 'Sayfa', continued: '(devam)', revisions: 'Revizyonlar', purchase: 'SATIN ALMA LİSTESİ',
       summary: 'ÖZET', noSupplier: 'Tedarikçi belirtilmemiş', firstIssue: 'İlk yayın', byCategory: 'Kategoriye göre',
       generated: 'BOMX ile oluşturuldu', notes: 'Notlar', sections: 'bölüm', count: 'Kalem', scope: 'Kapsam',
-      uncategorized: 'Kategorisiz', docType: 'Belge Türü', docTypeValue: 'Malzeme Listesi (BOM)', descValue: 'Endüstriyel Yıkama Makinesi', pages: 'Sayfa Sayısı'
+      uncategorized: 'Kategorisiz', docType: 'Belge Türü', docTypeValue: 'Malzeme Listesi (BOM)', descValue: 'Endüstriyel Parça Yıkama Makinesi', pages: 'Sayfa Sayısı'
     },
     en: {
       title: 'BILL OF MATERIALS', subtitle: 'BOM', project: 'Project No', customer: 'Customer', model: 'Model',
@@ -120,7 +120,7 @@
       total: 'Total', items: 'items', page: 'Page', continued: '(continued)', revisions: 'Revisions', purchase: 'PURCHASE LIST',
       summary: 'SUMMARY', noSupplier: 'No supplier', firstIssue: 'First issue', byCategory: 'By category',
       generated: 'Generated with BOMX', notes: 'Notes', sections: 'sections', count: 'Items', scope: 'Scope',
-      uncategorized: 'Uncategorized', docType: 'Document Type', docTypeValue: 'Bill of Materials (BOM)', descValue: 'Industrial Washing Machine', pages: 'Pages'
+      uncategorized: 'Uncategorized', docType: 'Document Type', docTypeValue: 'Bill of Materials (BOM)', descValue: 'Industrial Parts Washing Machine', pages: 'Pages'
     },
     de: {
       title: 'STÜCKLISTE', subtitle: 'Bill of Materials (BOM)', project: 'Projekt-Nr.', customer: 'Kunde', model: 'Modell',
@@ -130,7 +130,7 @@
       total: 'Summe', items: 'Positionen', page: 'Seite', continued: '(Fortsetzung)', revisions: 'Revisionen', purchase: 'BESTELLLISTE',
       summary: 'ZUSAMMENFASSUNG', noSupplier: 'Kein Lieferant', firstIssue: 'Erstausgabe', byCategory: 'Nach Kategorie',
       generated: 'Erstellt mit BOMX', notes: 'Bemerkungen', sections: 'Abschnitte', count: 'Pos.', scope: 'Umfang',
-      uncategorized: 'Ohne Kategorie', docType: 'Dokumentart', docTypeValue: 'Stückliste (BOM)', descValue: 'Industrielle Waschmaschine', pages: 'Seiten'
+      uncategorized: 'Ohne Kategorie', docType: 'Dokumentart', docTypeValue: 'Stückliste (BOM)', descValue: 'Industrielle Teilewaschmaschine', pages: 'Seiten'
     }
   };
   const UNIT_TEXT = {
@@ -751,7 +751,7 @@
       seriNo: clean(p.seriNo),
       musteri: clean(p.musteri),
       model: clean(p.model),
-      // Eski projelerin elle yazılmış açıklaması; belgede yazmaz (antette sabit, dile göre çevrilen "Endüstriyel Yıkama Makinesi")
+      // Eski projelerin elle yazılmış açıklaması; belgede yazmaz (antette sabit, dile göre çevrilen "Endüstriyel Parça Yıkama Makinesi")
       baslik: clean(p.baslik),
       durum: STATUS_IDS.includes(p.durum) ? p.durum : 'taslak',
       firma: BRAND_IDS.includes(clean(p.firma).toUpperCase()) ? clean(p.firma).toUpperCase() : 'DOLFIN',
