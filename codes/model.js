@@ -586,7 +586,11 @@
   }
 
   /**
-   * Arama: her sözcük kayıtta geçmeli. Sıralama: kod tam eşleşme, kod başı, ad sözcük başı, diğer.
+   * Arama: her sözcük kayıtta geçmeli. Sıralama: kod tam eşleşme, kod başı, ad sözcük başı, diğer;
+   * art arda iki sözcük kayıtta da yan yana geçiyorsa öne çıkar ("KBN 1850": adında ya da
+   * "Komple: 07 08380 (KBN 1850)" satırında o makine yazanlar, "KBN 1B 1650, 1B 1850" geçenlerden önce).
+   * Bulunan komplenin "Parçalar:" satırındaki komponentler hemen altına gelir (aramaya uymasalar da):
+   * makine adıyla komple, kompleden ayrı ayrı parçaları bulunur.
    * @param list komponentler; index verilirse (buildSearchIndex) metin her seferinde yeniden kurulmaz
    */
   function searchComponents(list, query, index) {
@@ -610,10 +614,51 @@
         else if (name.startsWith(t) || name.includes(` ${t}`)) score += 2;
         else score += 1;
       }
-      if (ok) scored.push({ c, score });
+      if (!ok) continue;
+      for (let i = 1; i < tokens.length; i++) {
+        if (text.includes(`${tokens[i - 1]} ${tokens[i]}`)) score += 3;
+      }
+      scored.push({ c, score });
     }
     scored.sort((a, b) => b.score - a.score || compareComponents(a.c, b.c));
-    return scored.map((s) => s.c);
+    let byKey = null;
+    const out = [];
+    const seen = new Set();
+    for (const { c } of scored) {
+      if (seen.has(c.id)) continue;
+      seen.add(c.id);
+      out.push(c);
+      if (!/^Parçalar:/im.test(c.aciklama || '')) continue;
+      byKey = byKey || new Map(list.map((x) => [codeKey(x.kod), x]));
+      for (const p of kitParts(c, byKey)) {
+        if (seen.has(p.id)) continue;
+        seen.add(p.id);
+        out.push(p);
+      }
+    }
+    return out;
+  }
+
+  /**
+   * Komplenin "Parçalar: 10 00590 REDÜKTÖR MOTORU … · 10 03390 REDÜKTÖR …" satırındaki komponentler.
+   * Her parça " · " ile ayrılır ve kodla başlar (kod boşluk içerebilir: en uzun bilinen kod alınır).
+   * @param byKey codeKey → komponent
+   */
+  function kitParts(c, byKey) {
+    const line = (String((c && c.aciklama) || '').match(/^Parçalar:(.*)$/im) || [])[1];
+    if (!line) return [];
+    const found = [];
+    for (const seg of line.split('·')) {
+      const words = seg.trim().split(/\s+/);
+      for (let n = Math.min(words.length, 4); n > 0; n--) {
+        const p = byKey.get(codeKey(words.slice(0, n).join(' ')));
+        if (p) {
+          if (p.id !== c.id && !found.includes(p)) found.push(p);
+          break;
+        }
+      }
+    }
+    return found;
   }
 
   function buildSearchIndex(list) {
@@ -824,8 +869,8 @@
 
   const SNAPSHOT_FIELDS = ['kod', 'ad', 'kategori', 'uretici', 'ureticiKodu', 'tedarikci', 'birim', 'aciklama', 'aciklamaEn', 'aciklamaDe'];
 
-  // Kütüphane açıklamasındaki iç notlar malzeme listesine girmez: kullanıldığı makineler, kompleler, kaynak ve doğrulama notları
-  const INTERNAL_NOTE = /^(Kullanım|Komple|Kaynak \(web\)|Not|İlgili kod|Alternatif):/i;
+  // Kütüphane açıklamasındaki iç notlar malzeme listesine girmez: kullanıldığı makineler, kompleler, komplenin parçaları, kaynak ve doğrulama notları
+  const INTERNAL_NOTE = /^(Kullanım|Komple|Parçalar|Kaynak \(web\)|Not|İlgili kod|Alternatif):/i;
 
   /** Komponent açıklamasının listede ve belgede görünen kısmı (teknik özellik) */
   function bomDescription(text) {
@@ -1787,6 +1832,7 @@
     packageDocument,
     packageItems,
     searchComponents,
+    kitParts,
     buildSearchIndex,
     componentSearchText,
     categoryCounts,

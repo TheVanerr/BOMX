@@ -80,6 +80,21 @@ test('arama kod eşleşmesini öne alır, her sözcük geçmeli', () => {
   assert.deepEqual(M.searchComponents(list, 'grundfos', index).map((c) => c.kod), ['PE01', 'PE02']);
 });
 
+test('arama: makine adı yan yana geçen kayıt öne çıkar (komple ve ayrılmış parçaları)', () => {
+  const list = [
+    M.normalizeComponent({ id: '1', kod: '07 08394', ad: 'KBN 1B 1850 KURUTMA KOMPLESİ' }),
+    M.normalizeComponent({ id: '2', kod: '10 00249', ad: 'TERMİK RÖLESİ LR2K0314', aciklama: 'Termik röle\nKullanım: KBN 1B 1650, 1B 1850' }),
+    M.normalizeComponent({ id: '3', kod: '10 03390', ad: 'REDÜKTÖR EN:50 I:25 B:07', aciklama: 'Redüktör\nKullanım: KBN 1B 1650, 1B 1850\nKomple: 07 08366 (KBN 1650), 07 08380 (KBN 1850)' }),
+    M.normalizeComponent({ id: '4', kod: '07 08380', ad: 'REDÜKTÖR VE MOTOR KOMP YILMAZ KBN 1850', aciklama: 'Komple\nParçalar: 10 00590 REDÜKTÖR MOTORU 0,37KW · 10 03390 REDÜKTÖR EN:50 I:25 B:07' }),
+    M.normalizeComponent({ id: '5', kod: '10 00590', ad: 'REDÜKTÖR MOTORU 0,37KW 1500D/D', aciklama: 'Motor\nKullanım: LYM 1500' })
+  ];
+  // Komple önde, parçaları hemen altında (10 00590 aramaya uymasa da), sonra yan yana geçmeyenler
+  assert.deepEqual(M.searchComponents(list, 'KBN 1850').map((c) => c.kod), ['07 08380', '10 00590', '10 03390', '07 08394', '10 00249']);
+  assert.deepEqual(M.searchComponents(list, '08380', M.buildSearchIndex(list)).map((c) => c.kod), ['07 08380', '10 00590', '10 03390']);
+  assert.deepEqual(M.kitParts(list[3], new Map(list.map((c) => [M.codeKey(c.kod), c]))).map((c) => c.kod), ['10 00590', '10 03390']);
+  assert.equal(M.bomDescription(list[3].aciklama), 'Komple');
+});
+
 test('komponent kimliği 16 parçadan birine düşer; parça birleşmesi kayıt kayıt yapılır', () => {
   assert.equal(M.shardOf('a1b2c3'), 'a');
   assert.ok('0123456789abcdef'.includes(M.shardOf('kimlik-yok')));
